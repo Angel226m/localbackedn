@@ -1,0 +1,44 @@
+ 
+services:
+  sistema-tours-db:
+    image: postgres:13
+    container_name: sistema-tours-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sistema_tours
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d  # Se ejecutan las migraciones automáticamente
+    restart: always
+    networks:
+      - sistema-tours-network
+
+  sistema-tours-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sistema-tours-backend
+    environment:
+      - DB_HOST=sistema-tours-db
+      - DB_PORT=5432
+      - DB_NAME=sistema_tours
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - SERVER_PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sistema-tours-db
+    restart: always
+    networks:
+      - sistema-tours-network
+
+volumes:
+  postgres_data:
+
+networks:
+  sistema-tours-network:
+    driver: bridge
