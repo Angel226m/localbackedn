@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -134,4 +134,24 @@ func (c *MetodoPagoController) List(ctx *gin.Context) {
 
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Métodos de pago listados exitosamente", metodosPago))
+}
+
+// ListBySede lista todos los métodos de pago de una sede específica
+func (c *MetodoPagoController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de la sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+		return
+	}
+
+	// Listar métodos de pago de la sede
+	metodosPago, err := c.metodoPagoService.ListBySede(idSede)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar métodos de pago de la sede", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Métodos de pago de la sede listados exitosamente", metodosPago))
 }

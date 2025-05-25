@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"net/http"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

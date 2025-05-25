@@ -3,12 +3,14 @@ package servicios
 import (
 	"database/sql"
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"fmt"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 	"time"
 )
 
 // ReservaService maneja la lógica de negocio para reservas
+// Coordina las operaciones entre el repositorio y las reglas de negocio
 type ReservaService struct {
 	db                 *sql.DB
 	reservaRepo        *repositorios.ReservaRepository
@@ -17,9 +19,11 @@ type ReservaService struct {
 	canalVentaRepo     *repositorios.CanalVentaRepository
 	tipoPasajeRepo     *repositorios.TipoPasajeRepository
 	usuarioRepo        *repositorios.UsuarioRepository
+	sedeRepo           *repositorios.SedeRepository // Añadido repositorio de sedes
 }
 
 // NewReservaService crea una nueva instancia de ReservaService
+// Inicializa el servicio con todas las dependencias necesarias
 func NewReservaService(
 	db *sql.DB,
 	reservaRepo *repositorios.ReservaRepository,
@@ -28,6 +32,7 @@ func NewReservaService(
 	canalVentaRepo *repositorios.CanalVentaRepository,
 	tipoPasajeRepo *repositorios.TipoPasajeRepository,
 	usuarioRepo *repositorios.UsuarioRepository,
+	sedeRepo *repositorios.SedeRepository, // Añadido repositorio de sedes
 ) *ReservaService {
 	return &ReservaService{
 		db:                 db,
@@ -37,10 +42,13 @@ func NewReservaService(
 		canalVentaRepo:     canalVentaRepo,
 		tipoPasajeRepo:     tipoPasajeRepo,
 		usuarioRepo:        usuarioRepo,
+		sedeRepo:           sedeRepo, // Asignado nuevo repositorio
 	}
 }
 
 // Create crea una nueva reserva
+// Valida todos los datos y realiza las operaciones necesarias en la base de datos
+// Retorna el ID de la reserva creada o un error si falla
 func (s *ReservaService) Create(reserva *entidades.NuevaReservaRequest) (int, error) {
 	// Verificar que el cliente existe
 	_, err := s.clienteRepo.GetByID(reserva.IDCliente)
@@ -63,6 +71,12 @@ func (s *ReservaService) Create(reserva *entidades.NuevaReservaRequest) (int, er
 	_, err = s.canalVentaRepo.GetByID(reserva.IDCanal)
 	if err != nil {
 		return 0, errors.New("el canal de venta especificado no existe")
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(reserva.IDSede)
+	if err != nil {
+		return 0, errors.New("la sede especificada no existe")
 	}
 
 	// Si se especifica un vendedor, verificar que existe y es vendedor
@@ -125,11 +139,14 @@ func (s *ReservaService) Create(reserva *entidades.NuevaReservaRequest) (int, er
 }
 
 // GetByID obtiene una reserva por su ID
+// Retorna la reserva completa con todos sus datos relacionados
 func (s *ReservaService) GetByID(id int) (*entidades.Reserva, error) {
 	return s.reservaRepo.GetByID(id)
 }
 
 // Update actualiza una reserva existente
+// Valida todos los datos y actualiza la información en la base de datos
+// Maneja la lógica de cambios en el cupo de pasajeros si es necesario
 func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequest) error {
 	// Verificar que la reserva existe
 	existingReserva, err := s.reservaRepo.GetByID(id)
@@ -153,6 +170,12 @@ func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequ
 	_, err = s.canalVentaRepo.GetByID(reserva.IDCanal)
 	if err != nil {
 		return errors.New("el canal de venta especificado no existe")
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(reserva.IDSede)
+	if err != nil {
+		return errors.New("la sede especificada no existe")
 	}
 
 	// Si se especifica un vendedor, verificar que existe y es vendedor
@@ -247,6 +270,8 @@ func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequ
 }
 
 // CambiarEstado cambia el estado de una reserva
+// Actualiza el estado y maneja la lógica de negocio relacionada con el cambio
+// Por ejemplo, libera cupos si se cancela una reserva
 func (s *ReservaService) CambiarEstado(id int, estado string) error {
 	// Verificar que la reserva existe
 	reserva, err := s.reservaRepo.GetByID(id)
@@ -308,7 +333,9 @@ func (s *ReservaService) CambiarEstado(id int, estado string) error {
 	return s.reservaRepo.UpdateEstado(id, estado)
 }
 
-// Delete elimina una reserva
+// Delete realiza una eliminación lógica de una reserva
+// Verifica restricciones como pagos o comprobantes asociados
+// Actualiza el cupo disponible en el tour si es necesario
 func (s *ReservaService) Delete(id int) error {
 	// Verificar que la reserva existe
 	reserva, err := s.reservaRepo.GetByID(id)
@@ -336,16 +363,18 @@ func (s *ReservaService) Delete(id int) error {
 		}
 	}
 
-	// Eliminar reserva
+	// Eliminar reserva (lógicamente)
 	return s.reservaRepo.Delete(id)
 }
 
-// List lista todas las reservas
+// List obtiene todas las reservas activas del sistema
+// Retorna un slice de reservas con toda su información relacionada
 func (s *ReservaService) List() ([]*entidades.Reserva, error) {
 	return s.reservaRepo.List()
 }
 
-// ListByCliente lista todas las reservas de un cliente
+// ListByCliente lista todas las reservas de un cliente específico
+// Verifica primero que el cliente exista
 func (s *ReservaService) ListByCliente(idCliente int) ([]*entidades.Reserva, error) {
 	// Verificar que el cliente existe
 	_, err := s.clienteRepo.GetByID(idCliente)
@@ -356,7 +385,8 @@ func (s *ReservaService) ListByCliente(idCliente int) ([]*entidades.Reserva, err
 	return s.reservaRepo.ListByCliente(idCliente)
 }
 
-// ListByTourProgramado lista todas las reservas para un tour programado
+// ListByTourProgramado lista todas las reservas para un tour programado específico
+// Verifica primero que el tour programado exista
 func (s *ReservaService) ListByTourProgramado(idTourProgramado int) ([]*entidades.Reserva, error) {
 	// Verificar que el tour programado existe
 	_, err := s.tourProgramadoRepo.GetByID(idTourProgramado)
@@ -368,11 +398,13 @@ func (s *ReservaService) ListByTourProgramado(idTourProgramado int) ([]*entidade
 }
 
 // ListByFecha lista todas las reservas para una fecha específica
+// Útil para ver todas las reservas de un día determinado
 func (s *ReservaService) ListByFecha(fecha time.Time) ([]*entidades.Reserva, error) {
 	return s.reservaRepo.ListByFecha(fecha)
 }
 
-// ListByEstado lista todas las reservas por estado
+// ListByEstado lista todas las reservas por estado específico (RESERVADO, CANCELADA)
+// Verifica que el estado sea válido antes de ejecutar la consulta
 func (s *ReservaService) ListByEstado(estado string) ([]*entidades.Reserva, error) {
 	// Verificar que el estado es válido
 	if estado != "RESERVADO" && estado != "CANCELADA" {
@@ -380,4 +412,38 @@ func (s *ReservaService) ListByEstado(estado string) ([]*entidades.Reserva, erro
 	}
 
 	return s.reservaRepo.ListByEstado(estado)
+}
+
+// ListBySede lista todas las reservas de una sede específica
+// Verifica primero que la sede exista
+// ListBySede lista todas las reservas de una sede específica
+// Verifica primero que la sede exista
+func (s *ReservaService) ListBySede(idSede int) ([]*entidades.Reserva, error) {
+	// Verificar que la sede existe
+	sede, err := s.sedeRepo.GetByID(idSede)
+	if err != nil {
+		return nil, errors.New("la sede especificada no existe")
+	}
+
+	// Verificar que la sede no está eliminada
+	if sede.Eliminado {
+		return nil, errors.New("la sede especificada está eliminada")
+	}
+
+	// Convertir idSede a puntero para pasarlo al repositorio
+	sedeID := idSede // Crear una variable local para obtener su dirección
+
+	// Obtener las reservas de la sede
+	reservas, err := s.reservaRepo.ListBySede(&sedeID)
+	if err != nil {
+		return nil, fmt.Errorf("error al obtener las reservas de la sede: %v", err)
+	}
+
+	return reservas, nil
+}
+
+// Agregar un nuevo método para listar todas las reservas (para ADMIN)
+func (s *ReservaService) ListAllReservas() ([]*entidades.Reserva, error) {
+	// Pasar nil para obtener todas las reservas sin filtrar por sede
+	return s.reservaRepo.ListBySede(nil)
 }

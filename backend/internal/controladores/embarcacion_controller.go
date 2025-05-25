@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

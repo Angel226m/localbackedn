@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -103,7 +103,7 @@ func (c *UsuarioController) Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuario actualizado exitosamente", nil))
 }
 
-// Delete elimina un usuario (borrado lógico)
+// Delete elimina un usuario (soft delete)
 func (c *UsuarioController) Delete(ctx *gin.Context) {
 	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
@@ -112,7 +112,7 @@ func (c *UsuarioController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	// Eliminar usuario
+	// Eliminar usuario (soft delete)
 	err = c.usuarioService.Delete(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Error al eliminar usuario", err))
@@ -123,9 +123,28 @@ func (c *UsuarioController) Delete(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuario eliminado exitosamente", nil))
 }
 
+// Restore restaura un usuario eliminado
+func (c *UsuarioController) Restore(ctx *gin.Context) {
+	// Parsear ID de la URL
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	// Restaurar usuario
+	err = c.usuarioService.Restore(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Error al restaurar usuario", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuario restaurado exitosamente", nil))
+}
+
 // ListByRol lista usuarios por rol
 func (c *UsuarioController) ListByRol(ctx *gin.Context) {
-	// Obtener rol de la URL
 	rol := ctx.Param("rol")
 
 	// Validar rol
@@ -141,18 +160,17 @@ func (c *UsuarioController) ListByRol(ctx *gin.Context) {
 		return
 	}
 
-	// Listar usuarios
+	// Si es ADMIN, no filtramos por sede
 	usuarios, err := c.usuarioService.ListByRol(rol)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar usuarios", err))
 		return
 	}
 
-	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuarios listados exitosamente", usuarios))
 }
 
-// List lista todos los usuarios
+// List lista todos los usuarios activos
 func (c *UsuarioController) List(ctx *gin.Context) {
 	// Listar usuarios
 	usuarios, err := c.usuarioService.List()
@@ -163,4 +181,17 @@ func (c *UsuarioController) List(ctx *gin.Context) {
 
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuarios listados exitosamente", usuarios))
+}
+
+// ListDeleted lista todos los usuarios eliminados
+func (c *UsuarioController) ListDeleted(ctx *gin.Context) {
+	// Listar usuarios eliminados
+	usuarios, err := c.usuarioService.ListDeleted()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar usuarios eliminados", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuarios eliminados listados exitosamente", usuarios))
 }

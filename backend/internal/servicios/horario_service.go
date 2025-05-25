@@ -1,9 +1,10 @@
 package servicios
 
+/*
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 )
 
 // HorarioTourService maneja la lógica de negocio para horarios de tour
@@ -96,3 +97,4 @@ func (s *HorarioTourService) ListByDia(diaSemana int) ([]*entidades.HorarioTour,
 	// Listar horarios de tour por día
 	return s.horarioTourRepo.ListByDia(diaSemana)
 }
+*/

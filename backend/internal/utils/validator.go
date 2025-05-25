@@ -182,3 +182,15 @@ func FormatValidationErrors(err error) ValidationErrors {
 
 	return errors
 }
+func RegisterValidations(v *validator.Validate) {
+	// Validación personalizada para id_sede según el rol
+	v.RegisterValidation("validate_sede", func(fl validator.FieldLevel) bool {
+		idSede := fl.Field().Interface().(*int)
+		rol := fl.Parent().FieldByName("Rol").String()
+
+		if rol == "ADMIN" {
+			return idSede == nil
+		}
+		return idSede != nil
+	})
+}

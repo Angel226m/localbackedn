@@ -1,6 +1,7 @@
- 
+version: '3.8'
+
 services:
-  sistema-tours-db:
+  db:
     image: postgres:13
     container_name: sistema-tours-db
     environment:
@@ -11,34 +12,112 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d  # Se ejecutan las migraciones automáticamente
+      - ./migrations:/docker-entrypoint-initdb.d
     restart: always
     networks:
-      - sistema-tours-network
+      -  my-shared-network
 
-  sistema-tours-backend:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sistema-tours-backend
+    container_name: backend      # Se recomienda usar "backend" para que pueda ser resuelto desde el frontend como "backend"
     environment:
-      - DB_HOST=sistema-tours-db
+      - DB_HOST=db               # Usa el nombre del servicio de la base de datos
       - DB_PORT=5432
       - DB_NAME=sistema_tours
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - SERVER_PORT=8080
+      - SERVER_PORT=8080         # El backend se ejecutará en este puerto internamente
     ports:
       - "8080:8080"
+      - "8443:8443"
     depends_on:
-      - sistema-tours-db
+      - db
     restart: always
     networks:
-      - sistema-tours-network
+      - my-shared-network
 
 volumes:
   postgres_data:
 
 networks:
-  sistema-tours-network:
+  my-shared-network:
     driver: bridge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#services:
+ # sistema-tours-db:             # Se utiliza este nombre para el servicio
+  #  image: postgres:13
+   # container_name: sistema-tours-db    # Nombre del contenedor
+    #environment:
+   #   - POSTGRES_USER=postgres
+     # - POSTGRES_PASSWORD=postgres
+      #- POSTGRES_DB=sistema_tours
+    #ports:
+     # - "5432:5432"            # El contenedor usa internamente el puerto 5432 y se expone en el mismo puerto en el host
+    #volumes:
+     # - postgres_data:/var/lib/postgresql/data
+      #- ./migrations:/docker-entrypoint-initdb.d  # Migraciones automáticas
+   # restart: always
+    #networks:
+     # - sistema-tours-network
+
+ # sistema-tours-backend:
+#    build:
+  #    context: .
+   #   dockerfile: Dockerfile
+    #container_name: sistema-tours-backend
+    #environment:
+     # - DB_HOST=sistema-tours-db    # Se utiliza el nombre del servicio de base de datos
+      #- DB_PORT=5432                # Puerto interno de PostgreSQL
+      #- DB_NAME=sistema_tours
+      #- DB_USER=postgres
+      #- DB_PASSWORD=postgres
+      #- SERVER_PORT=8080
+    #ports:
+     # - "8080:8080"
+    #depends_on:
+     # - sistema-tours-db            # Dependencia correctamente definida
+   # restart: always
+    #networks:
+     # - sistema-tours-network`
+#volumes:
+ # postgres_data:
+
+#Wnetworks:
+#  sistema-tours-network:
+ #   driver: bridge'''
+
+ 
+
+
+
+
+ 

@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -134,4 +134,24 @@ func (c *CanalVentaController) List(ctx *gin.Context) {
 
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Canales de venta listados exitosamente", canales))
+}
+
+// ListBySede lista todos los canales de venta de una sede específica
+func (c *CanalVentaController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de la sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+		return
+	}
+
+	// Listar canales de venta de la sede
+	canales, err := c.canalVentaService.ListBySede(idSede)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar canales de venta de la sede", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Canales de venta de la sede listados exitosamente", canales))
 }

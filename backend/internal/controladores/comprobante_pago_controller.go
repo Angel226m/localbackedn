@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 	"time"
 
@@ -39,6 +39,11 @@ func (c *ComprobantePagoController) Create(ctx *gin.Context) {
 		return
 	}
 
+	// Si no se especifica la sede, usar la sede del usuario autenticado
+	if comprobanteReq.IDSede == 0 && ctx.GetInt("sede_id") > 0 {
+		comprobanteReq.IDSede = ctx.GetInt("sede_id")
+	}
+
 	// Crear comprobante de pago
 	id, err := c.comprobantePagoService.Create(&comprobanteReq)
 	if err != nil {
@@ -66,6 +71,12 @@ func (c *ComprobantePagoController) GetByID(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar acceso según el rol
+	if ctx.GetString("rol") != "ADMIN" && comprobante.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para ver este comprobante", nil))
+		return
+	}
+
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobante de pago obtenido", comprobante))
 }
@@ -89,6 +100,12 @@ func (c *ComprobantePagoController) GetByTipoAndNumero(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar acceso según el rol
+	if ctx.GetString("rol") != "ADMIN" && comprobante.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para ver este comprobante", nil))
+		return
+	}
+
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobante de pago obtenido", comprobante))
 }
@@ -99,6 +116,19 @@ func (c *ComprobantePagoController) Update(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	// Verificar que el comprobante existe y el usuario tiene acceso
+	comprobante, err := c.comprobantePagoService.GetByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Comprobante de pago no encontrado", err))
+		return
+	}
+
+	// Verificar acceso según el rol
+	if ctx.GetString("rol") != "ADMIN" && comprobante.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para modificar este comprobante", nil))
 		return
 	}
 
@@ -113,6 +143,12 @@ func (c *ComprobantePagoController) Update(ctx *gin.Context) {
 	// Validar datos
 	if err := utils.ValidateStruct(comprobanteReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	// Verificar que la sede es la misma del usuario para no-administradores
+	if ctx.GetString("rol") != "ADMIN" && comprobanteReq.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para cambiar la sede del comprobante", nil))
 		return
 	}
 
@@ -133,6 +169,19 @@ func (c *ComprobantePagoController) CambiarEstado(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	// Verificar que el comprobante existe y el usuario tiene acceso
+	comprobante, err := c.comprobantePagoService.GetByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Comprobante de pago no encontrado", err))
+		return
+	}
+
+	// Verificar acceso según el rol
+	if ctx.GetString("rol") != "ADMIN" && comprobante.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para modificar este comprobante", nil))
 		return
 	}
 
@@ -170,6 +219,19 @@ func (c *ComprobantePagoController) Delete(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar que el comprobante existe y el usuario tiene acceso
+	comprobante, err := c.comprobantePagoService.GetByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Comprobante de pago no encontrado", err))
+		return
+	}
+
+	// Verificar acceso según el rol
+	if ctx.GetString("rol") != "ADMIN" && comprobante.IDSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para eliminar este comprobante", nil))
+		return
+	}
+
 	// Eliminar comprobante de pago
 	err = c.comprobantePagoService.Delete(id)
 	if err != nil {
@@ -183,11 +245,30 @@ func (c *ComprobantePagoController) Delete(ctx *gin.Context) {
 
 // List lista todos los comprobantes de pago
 func (c *ComprobantePagoController) List(ctx *gin.Context) {
-	// Listar comprobantes de pago
-	comprobantes, err := c.comprobantePagoService.List()
+	var comprobantes []*entidades.ComprobantePago
+	var err error
+
+	// Si es ADMIN, listar todos los comprobantes
+	if ctx.GetString("rol") == "ADMIN" {
+		comprobantes, err = c.comprobantePagoService.List()
+	} else {
+		// Si no es ADMIN, listar solo los comprobantes de su sede
+		sedeID := ctx.GetInt("sede_id")
+		if sedeID <= 0 {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Usuario no tiene sede asignada", nil))
+			return
+		}
+		comprobantes, err = c.comprobantePagoService.ListBySede(sedeID)
+	}
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar comprobantes de pago", err))
 		return
+	}
+
+	// Si no hay comprobantes, devolver array vacío
+	if comprobantes == nil {
+		comprobantes = []*entidades.ComprobantePago{}
 	}
 
 	// Respuesta exitosa
@@ -208,6 +289,19 @@ func (c *ComprobantePagoController) ListByReserva(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar comprobantes de pago por reserva", err))
 		return
+	}
+
+	// Verificar acceso según el rol para los comprobantes obtenidos
+	if ctx.GetString("rol") != "ADMIN" && len(comprobantes) > 0 {
+		sedeUsuario := ctx.GetInt("sede_id")
+		comprobanteFiltrados := []*entidades.ComprobantePago{}
+
+		for _, comprobante := range comprobantes {
+			if comprobante.IDSede == sedeUsuario {
+				comprobanteFiltrados = append(comprobanteFiltrados, comprobante)
+			}
+		}
+		comprobantes = comprobanteFiltrados
 	}
 
 	// Respuesta exitosa
@@ -231,6 +325,19 @@ func (c *ComprobantePagoController) ListByFecha(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar acceso según el rol para los comprobantes obtenidos
+	if ctx.GetString("rol") != "ADMIN" {
+		sedeUsuario := ctx.GetInt("sede_id")
+		comprobanteFiltrados := []*entidades.ComprobantePago{}
+
+		for _, comprobante := range comprobantes {
+			if comprobante.IDSede == sedeUsuario {
+				comprobanteFiltrados = append(comprobanteFiltrados, comprobante)
+			}
+		}
+		comprobantes = comprobanteFiltrados
+	}
+
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobantes de pago listados exitosamente", comprobantes))
 }
@@ -247,6 +354,19 @@ func (c *ComprobantePagoController) ListByTipo(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar acceso según el rol para los comprobantes obtenidos
+	if ctx.GetString("rol") != "ADMIN" {
+		sedeUsuario := ctx.GetInt("sede_id")
+		comprobanteFiltrados := []*entidades.ComprobantePago{}
+
+		for _, comprobante := range comprobantes {
+			if comprobante.IDSede == sedeUsuario {
+				comprobanteFiltrados = append(comprobanteFiltrados, comprobante)
+			}
+		}
+		comprobantes = comprobanteFiltrados
+	}
+
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobantes de pago listados exitosamente", comprobantes))
 }
@@ -261,6 +381,19 @@ func (c *ComprobantePagoController) ListByEstado(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar comprobantes de pago por estado", err))
 		return
+	}
+
+	// Verificar acceso según el rol para los comprobantes obtenidos
+	if ctx.GetString("rol") != "ADMIN" {
+		sedeUsuario := ctx.GetInt("sede_id")
+		comprobanteFiltrados := []*entidades.ComprobantePago{}
+
+		for _, comprobante := range comprobantes {
+			if comprobante.IDSede == sedeUsuario {
+				comprobanteFiltrados = append(comprobanteFiltrados, comprobante)
+			}
+		}
+		comprobantes = comprobanteFiltrados
 	}
 
 	// Respuesta exitosa
@@ -283,6 +416,50 @@ func (c *ComprobantePagoController) ListByCliente(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar acceso según el rol para los comprobantes obtenidos
+	if ctx.GetString("rol") != "ADMIN" {
+		sedeUsuario := ctx.GetInt("sede_id")
+		comprobanteFiltrados := []*entidades.ComprobantePago{}
+
+		for _, comprobante := range comprobantes {
+			if comprobante.IDSede == sedeUsuario {
+				comprobanteFiltrados = append(comprobanteFiltrados, comprobante)
+			}
+		}
+		comprobantes = comprobanteFiltrados
+	}
+
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobantes listados exitosamente", comprobantes))
+}
+
+// ListBySede lista todos los comprobantes de pago de una sede específica
+func (c *ComprobantePagoController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+		return
+	}
+
+	// Verificar permisos
+	if ctx.GetString("rol") != "ADMIN" && idSede != ctx.GetInt("sede_id") {
+		ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene permiso para ver comprobantes de otra sede", nil))
+		return
+	}
+
+	// Listar comprobantes por sede
+	comprobantes, err := c.comprobantePagoService.ListBySede(idSede)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar comprobantes por sede", err))
+		return
+	}
+
+	// Si no hay comprobantes, devolver array vacío
+	if comprobantes == nil {
+		comprobantes = []*entidades.ComprobantePago{}
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Comprobantes de la sede listados exitosamente", comprobantes))
 }

@@ -7,9 +7,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"sistema-tours/internal/controladores"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/controladores"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 	"testing"
 	"time"
@@ -18,6 +18,7 @@ import (
 )
 
 // MockUsuarioService es un servicio mock para pruebas
+// Implementa la interfaz servicios.UsuarioServiceInterface
 type MockUsuarioService struct {
 	usuarios         map[int]*entidades.Usuario
 	nextID           int
@@ -61,7 +62,7 @@ func (m *MockUsuarioService) Create(user *entidades.NuevoUsuarioRequest) (int, e
 		TipoDocumento:   user.TipoDocumento,
 		NumeroDocumento: user.NumeroDocumento,
 		FechaRegistro:   time.Now(),
-		Estado:          true,
+		Eliminado:       true,
 	}
 
 	return id, nil
@@ -107,7 +108,7 @@ func (m *MockUsuarioService) Delete(id int) error {
 		return errors.New("usuario no encontrado")
 	}
 
-	usuario.Estado = false
+	usuario.Eliminado = false
 	return nil
 }
 
@@ -115,7 +116,7 @@ func (m *MockUsuarioService) Delete(id int) error {
 func (m *MockUsuarioService) List() ([]*entidades.Usuario, error) {
 	var result []*entidades.Usuario
 	for _, usuario := range m.usuarios {
-		if usuario.Estado {
+		if usuario.Eliminado {
 			result = append(result, usuario)
 		}
 	}
@@ -126,7 +127,7 @@ func (m *MockUsuarioService) List() ([]*entidades.Usuario, error) {
 func (m *MockUsuarioService) ListByRol(rol string) ([]*entidades.Usuario, error) {
 	var result []*entidades.Usuario
 	for _, usuario := range m.usuarios {
-		if usuario.Estado && usuario.Rol == rol {
+		if usuario.Eliminado && usuario.Rol == rol {
 			result = append(result, usuario)
 		}
 	}

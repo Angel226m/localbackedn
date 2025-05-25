@@ -2,9 +2,9 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
+	"sistema-toursseft/internal/utils"
 )
 
 // UsuarioService maneja la lógica de negocio para usuarios
@@ -79,7 +79,7 @@ func (s *UsuarioService) Update(id int, usuario *entidades.Usuario) error {
 	return s.usuarioRepo.Update(usuario)
 }
 
-// Delete elimina un usuario (borrado lógico)
+// Delete elimina lógicamente un usuario (soft delete)
 func (s *UsuarioService) Delete(id int) error {
 	// Verificar que el usuario existe
 	_, err := s.usuarioRepo.GetByID(id)
@@ -87,8 +87,13 @@ func (s *UsuarioService) Delete(id int) error {
 		return err
 	}
 
-	// Eliminar usuario
-	return s.usuarioRepo.Delete(id)
+	// Eliminar usuario (soft delete)
+	return s.usuarioRepo.SoftDelete(id)
+}
+
+// Restore restaura un usuario eliminado
+func (s *UsuarioService) Restore(id int) error {
+	return s.usuarioRepo.Restore(id)
 }
 
 // ListByRol lista usuarios por rol
@@ -96,7 +101,12 @@ func (s *UsuarioService) ListByRol(rol string) ([]*entidades.Usuario, error) {
 	return s.usuarioRepo.ListByRol(rol)
 }
 
-// List lista todos los usuarios
+// List lista todos los usuarios activos
 func (s *UsuarioService) List() ([]*entidades.Usuario, error) {
 	return s.usuarioRepo.List()
+}
+
+// ListDeleted lista todos los usuarios eliminados
+func (s *UsuarioService) ListDeleted() ([]*entidades.Usuario, error) {
+	return s.usuarioRepo.ListDeleted()
 }

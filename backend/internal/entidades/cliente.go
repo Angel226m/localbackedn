@@ -8,7 +8,9 @@ type Cliente struct {
 	Nombres         string `json:"nombres" db:"nombres"`
 	Apellidos       string `json:"apellidos" db:"apellidos"`
 	Correo          string `json:"correo" db:"correo"`
+	Contrasena      string `json:"-" db:"contrasena,omitempty"`
 	NombreCompleto  string `json:"nombre_completo,omitempty" db:"-"` // Campo calculado
+	Eliminado       bool   `json:"eliminado" db:"eliminado"`
 }
 
 // NuevoClienteRequest representa los datos necesarios para crear un nuevo cliente

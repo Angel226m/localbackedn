@@ -3,7 +3,7 @@ package repositorios
 import (
 	"database/sql"
 	"errors"
-	"sistema-tours/internal/entidades"
+	"sistema-toursseft/internal/entidades"
 	"time"
 )
 
@@ -27,19 +27,22 @@ func parseTime(timeStr string) (time.Time, error) {
 // GetByID obtiene un horario de tour por su ID
 func (r *HorarioTourRepository) GetByID(id int) (*entidades.HorarioTour, error) {
 	horario := &entidades.HorarioTour{}
-	query := `SELECT h.id_horario, h.id_tipo_tour, h.hora_inicio, h.hora_fin, 
+	query := `SELECT h.id_horario, h.id_tipo_tour, h.id_sede, h.hora_inicio, h.hora_fin, 
               h.disponible_lunes, h.disponible_martes, h.disponible_miercoles, 
               h.disponible_jueves, h.disponible_viernes, h.disponible_sabado, 
-              h.disponible_domingo, t.nombre, t.descripcion
+              h.disponible_domingo, h.eliminado, t.nombre, t.descripcion, s.nombre
               FROM horario_tour h
               INNER JOIN tipo_tour t ON h.id_tipo_tour = t.id_tipo_tour
+              INNER JOIN sede s ON h.id_sede = s.id_sede
               WHERE h.id_horario = $1`
 
+	var descripcion sql.NullString
+
 	err := r.db.QueryRow(query, id).Scan(
-		&horario.ID, &horario.IDTipoTour, &horario.HoraInicio, &horario.HoraFin,
+		&horario.ID, &horario.IDTipoTour, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 		&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 		&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-		&horario.DisponibleDomingo, &horario.NombreTipoTour, &horario.DescripcionTipoTour,
+		&horario.DisponibleDomingo, &horario.Eliminado, &horario.NombreTipoTour, &descripcion, &horario.NombreSede,
 	)
 
 	if err != nil {
@@ -47,6 +50,10 @@ func (r *HorarioTourRepository) GetByID(id int) (*entidades.HorarioTour, error) 
 			return nil, errors.New("horario de tour no encontrado")
 		}
 		return nil, err
+	}
+
+	if descripcion.Valid {
+		horario.DescripcionTipoTour = descripcion.String
 	}
 
 	return horario, nil
@@ -73,15 +80,16 @@ func (r *HorarioTourRepository) Create(horario *entidades.NuevoHorarioTourReques
 	}
 
 	var id int
-	query := `INSERT INTO horario_tour (id_tipo_tour, hora_inicio, hora_fin, 
+	query := `INSERT INTO horario_tour (id_tipo_tour, id_sede, hora_inicio, hora_fin, 
               disponible_lunes, disponible_martes, disponible_miercoles, 
-              disponible_jueves, disponible_viernes, disponible_sabado, disponible_domingo) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+              disponible_jueves, disponible_viernes, disponible_sabado, disponible_domingo, eliminado) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false) 
               RETURNING id_horario`
 
 	err = r.db.QueryRow(
 		query,
 		horario.IDTipoTour,
+		horario.IDSede,
 		horaInicio,
 		horaFin,
 		horario.DisponibleLunes,
@@ -122,20 +130,23 @@ func (r *HorarioTourRepository) Update(id int, horario *entidades.ActualizarHora
 
 	query := `UPDATE horario_tour SET 
               id_tipo_tour = $1, 
-              hora_inicio = $2, 
-              hora_fin = $3, 
-              disponible_lunes = $4, 
-              disponible_martes = $5, 
-              disponible_miercoles = $6, 
-              disponible_jueves = $7, 
-              disponible_viernes = $8, 
-              disponible_sabado = $9, 
-              disponible_domingo = $10 
-              WHERE id_horario = $11`
+              id_sede = $2,
+              hora_inicio = $3, 
+              hora_fin = $4, 
+              disponible_lunes = $5, 
+              disponible_martes = $6, 
+              disponible_miercoles = $7, 
+              disponible_jueves = $8, 
+              disponible_viernes = $9, 
+              disponible_sabado = $10, 
+              disponible_domingo = $11,
+              eliminado = $12
+              WHERE id_horario = $13`
 
 	_, err = r.db.Exec(
 		query,
 		horario.IDTipoTour,
+		horario.IDSede,
 		horaInicio,
 		horaFin,
 		horario.DisponibleLunes,
@@ -145,17 +156,18 @@ func (r *HorarioTourRepository) Update(id int, horario *entidades.ActualizarHora
 		horario.DisponibleViernes,
 		horario.DisponibleSabado,
 		horario.DisponibleDomingo,
+		horario.Eliminado,
 		id,
 	)
 
 	return err
 }
 
-// Delete elimina un horario de tour
+// Delete marca un horario de tour como eliminado (borrado lógico)
 func (r *HorarioTourRepository) Delete(id int) error {
 	// Comprobar si hay tours programados que dependen de este horario
 	var count int
-	queryCheck := `SELECT COUNT(*) FROM tour_programado WHERE id_horario = $1`
+	queryCheck := `SELECT COUNT(*) FROM tour_programado WHERE id_horario = $1 AND eliminado = false`
 	err := r.db.QueryRow(queryCheck, id).Scan(&count)
 	if err != nil {
 		return err
@@ -165,20 +177,22 @@ func (r *HorarioTourRepository) Delete(id int) error {
 		return errors.New("no se puede eliminar este horario porque hay tours programados que dependen de él")
 	}
 
-	// Si no hay dependencias, procedemos a eliminar
-	query := `DELETE FROM horario_tour WHERE id_horario = $1`
+	// Si no hay dependencias, procedemos a marcar como eliminado
+	query := `UPDATE horario_tour SET eliminado = true WHERE id_horario = $1`
 	_, err = r.db.Exec(query, id)
 	return err
 }
 
-// List lista todos los horarios de tour
+// List lista todos los horarios de tour no eliminados
 func (r *HorarioTourRepository) List() ([]*entidades.HorarioTour, error) {
-	query := `SELECT h.id_horario, h.id_tipo_tour, h.hora_inicio, h.hora_fin,
+	query := `SELECT h.id_horario, h.id_tipo_tour, h.id_sede, h.hora_inicio, h.hora_fin,
               h.disponible_lunes, h.disponible_martes, h.disponible_miercoles, 
               h.disponible_jueves, h.disponible_viernes, h.disponible_sabado, 
-              h.disponible_domingo, t.nombre, t.descripcion
+              h.disponible_domingo, h.eliminado, t.nombre, t.descripcion, s.nombre
               FROM horario_tour h
               INNER JOIN tipo_tour t ON h.id_tipo_tour = t.id_tipo_tour
+              INNER JOIN sede s ON h.id_sede = s.id_sede
+              WHERE h.eliminado = false
               ORDER BY t.nombre, h.hora_inicio`
 
 	rows, err := r.db.Query(query)
@@ -191,15 +205,22 @@ func (r *HorarioTourRepository) List() ([]*entidades.HorarioTour, error) {
 
 	for rows.Next() {
 		horario := &entidades.HorarioTour{}
+		var descripcion sql.NullString
+
 		err := rows.Scan(
-			&horario.ID, &horario.IDTipoTour, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDTipoTour, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.NombreTipoTour, &horario.DescripcionTipoTour,
+			&horario.DisponibleDomingo, &horario.Eliminado, &horario.NombreTipoTour, &descripcion, &horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		if descripcion.Valid {
+			horario.DescripcionTipoTour = descripcion.String
+		}
+
 		horarios = append(horarios, horario)
 	}
 
@@ -212,13 +233,14 @@ func (r *HorarioTourRepository) List() ([]*entidades.HorarioTour, error) {
 
 // ListByTipoTour lista todos los horarios asociados a un tipo de tour específico
 func (r *HorarioTourRepository) ListByTipoTour(idTipoTour int) ([]*entidades.HorarioTour, error) {
-	query := `SELECT h.id_horario, h.id_tipo_tour, h.hora_inicio, h.hora_fin,
+	query := `SELECT h.id_horario, h.id_tipo_tour, h.id_sede, h.hora_inicio, h.hora_fin,
               h.disponible_lunes, h.disponible_martes, h.disponible_miercoles, 
               h.disponible_jueves, h.disponible_viernes, h.disponible_sabado, 
-              h.disponible_domingo, t.nombre, t.descripcion
+              h.disponible_domingo, h.eliminado, t.nombre, t.descripcion, s.nombre
               FROM horario_tour h
               INNER JOIN tipo_tour t ON h.id_tipo_tour = t.id_tipo_tour
-              WHERE h.id_tipo_tour = $1
+              INNER JOIN sede s ON h.id_sede = s.id_sede
+              WHERE h.id_tipo_tour = $1 AND h.eliminado = false
               ORDER BY h.hora_inicio`
 
 	rows, err := r.db.Query(query, idTipoTour)
@@ -231,15 +253,22 @@ func (r *HorarioTourRepository) ListByTipoTour(idTipoTour int) ([]*entidades.Hor
 
 	for rows.Next() {
 		horario := &entidades.HorarioTour{}
+		var descripcion sql.NullString
+
 		err := rows.Scan(
-			&horario.ID, &horario.IDTipoTour, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDTipoTour, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.NombreTipoTour, &horario.DescripcionTipoTour,
+			&horario.DisponibleDomingo, &horario.Eliminado, &horario.NombreTipoTour, &descripcion, &horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		if descripcion.Valid {
+			horario.DescripcionTipoTour = descripcion.String
+		}
+
 		horarios = append(horarios, horario)
 	}
 
@@ -272,13 +301,14 @@ func (r *HorarioTourRepository) ListByDia(diaSemana int) ([]*entidades.HorarioTo
 		return nil, errors.New("día de la semana inválido, debe ser un número entre 1 (Lunes) y 7 (Domingo)")
 	}
 
-	query := `SELECT h.id_horario, h.id_tipo_tour, h.hora_inicio, h.hora_fin,
+	query := `SELECT h.id_horario, h.id_tipo_tour, h.id_sede, h.hora_inicio, h.hora_fin,
               h.disponible_lunes, h.disponible_martes, h.disponible_miercoles, 
               h.disponible_jueves, h.disponible_viernes, h.disponible_sabado, 
-              h.disponible_domingo, t.nombre, t.descripcion
+              h.disponible_domingo, h.eliminado, t.nombre, t.descripcion, s.nombre
               FROM horario_tour h
               INNER JOIN tipo_tour t ON h.id_tipo_tour = t.id_tipo_tour
-              WHERE ` + condition + `
+              INNER JOIN sede s ON h.id_sede = s.id_sede
+              WHERE ` + condition + ` AND h.eliminado = false
               ORDER BY t.nombre, h.hora_inicio`
 
 	rows, err := r.db.Query(query)
@@ -291,15 +321,22 @@ func (r *HorarioTourRepository) ListByDia(diaSemana int) ([]*entidades.HorarioTo
 
 	for rows.Next() {
 		horario := &entidades.HorarioTour{}
+		var descripcion sql.NullString
+
 		err := rows.Scan(
-			&horario.ID, &horario.IDTipoTour, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDTipoTour, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.NombreTipoTour, &horario.DescripcionTipoTour,
+			&horario.DisponibleDomingo, &horario.Eliminado, &horario.NombreTipoTour, &descripcion, &horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		if descripcion.Valid {
+			horario.DescripcionTipoTour = descripcion.String
+		}
+
 		horarios = append(horarios, horario)
 	}
 

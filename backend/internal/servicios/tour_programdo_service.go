@@ -2,8 +2,8 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 	"time"
 )
 
@@ -13,6 +13,7 @@ type TourProgramadoService struct {
 	tipoTourRepo       *repositorios.TipoTourRepository
 	embarcacionRepo    *repositorios.EmbarcacionRepository
 	horarioTourRepo    *repositorios.HorarioTourRepository
+	sedeRepo           *repositorios.SedeRepository // Agregar repositorio de sede
 }
 
 // NewTourProgramadoService crea una nueva instancia de TourProgramadoService
@@ -21,12 +22,14 @@ func NewTourProgramadoService(
 	tipoTourRepo *repositorios.TipoTourRepository,
 	embarcacionRepo *repositorios.EmbarcacionRepository,
 	horarioTourRepo *repositorios.HorarioTourRepository,
+	sedeRepo *repositorios.SedeRepository, // Agregar parámetro
 ) *TourProgramadoService {
 	return &TourProgramadoService{
 		tourProgramadoRepo: tourProgramadoRepo,
 		tipoTourRepo:       tipoTourRepo,
 		embarcacionRepo:    embarcacionRepo,
 		horarioTourRepo:    horarioTourRepo,
+		sedeRepo:           sedeRepo, // Asignar el repositorio
 	}
 }
 
@@ -48,6 +51,12 @@ func (s *TourProgramadoService) Create(tour *entidades.NuevoTourProgramadoReques
 	horario, err := s.horarioTourRepo.GetByID(tour.IDHorario)
 	if err != nil {
 		return 0, errors.New("el horario de tour especificado no existe")
+	}
+
+	// Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(tour.IDSede) // Verificar que la sede exista
+	if err != nil {
+		return 0, errors.New("la sede especificada no existe")
 	}
 
 	// Verificar que el horario corresponde al tipo de tour
@@ -127,6 +136,12 @@ func (s *TourProgramadoService) Update(id int, tour *entidades.ActualizarTourPro
 	horario, err := s.horarioTourRepo.GetByID(tour.IDHorario)
 	if err != nil {
 		return errors.New("el horario de tour especificado no existe")
+	}
+
+	// Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(tour.IDSede) // Verificar que la sede exista
+	if err != nil {
+		return errors.New("la sede especificada no existe")
 	}
 
 	// Verificar que el horario corresponde al tipo de tour
@@ -344,4 +359,17 @@ func (s *TourProgramadoService) ListByTipoTour(idTipoTour int) ([]*entidades.Tou
 // GetDisponibilidadDia retorna la disponibilidad de tours para una fecha específica
 func (s *TourProgramadoService) GetDisponibilidadDia(fecha time.Time) ([]*entidades.TourProgramado, error) {
 	return s.tourProgramadoRepo.GetDisponibilidadDia(fecha)
+}
+
+// ListBySede lista todos los tours programados de una sede específica
+func (s *TourProgramadoService) ListBySede(idSede int) ([]*entidades.TourProgramado, error) {
+	// Verificar que la sede exista
+	_, err := s.sedeRepo.GetByID(idSede)
+	if err != nil {
+		return nil, errors.New("la sede especificada no existe")
+	}
+
+	// Implementar método en el repositorio o filtrar resultados aquí
+	// Esta es una función que deberás agregar al repositorio
+	return s.tourProgramadoRepo.ListBySede(idSede)
 }

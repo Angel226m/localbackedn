@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -65,8 +65,38 @@ func (c *HorarioChoferController) GetByID(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horarioResponse := map[string]interface{}{
+		"id_horario_chofer":    horario.ID,
+		"id_usuario":           horario.IDUsuario,
+		"id_sede":              horario.IDSede,
+		"hora_inicio":          horario.HoraInicio.Format("15:04"),
+		"hora_fin":             horario.HoraFin.Format("15:04"),
+		"disponible_lunes":     horario.DisponibleLunes,
+		"disponible_martes":    horario.DisponibleMartes,
+		"disponible_miercoles": horario.DisponibleMiercoles,
+		"disponible_jueves":    horario.DisponibleJueves,
+		"disponible_viernes":   horario.DisponibleViernes,
+		"disponible_sabado":    horario.DisponibleSabado,
+		"disponible_domingo":   horario.DisponibleDomingo,
+		"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+		"eliminado":            horario.Eliminado,
+		"nombre_chofer":        horario.NombreChofer,
+		"apellidos_chofer":     horario.ApellidosChofer,
+		"documento_chofer":     horario.DocumentoChofer,
+		"telefono_chofer":      horario.TelefonoChofer,
+		"nombre_sede":          horario.NombreSede,
+	}
+
+	// Formatear fecha_fin si existe
+	if horario.FechaFin != nil {
+		horarioResponse["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+	} else {
+		horarioResponse["fecha_fin"] = nil
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horario de chofer obtenido", horario))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horario de chofer obtenido", horarioResponse))
 }
 
 // Update actualiza un horario de chofer
@@ -103,7 +133,7 @@ func (c *HorarioChoferController) Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horario de chofer actualizado exitosamente", nil))
 }
 
-// Delete elimina un horario de chofer
+// Delete elimina un horario de chofer (borrado lógico)
 func (c *HorarioChoferController) Delete(ctx *gin.Context) {
 	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
@@ -132,8 +162,41 @@ func (c *HorarioChoferController) List(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horariosResponse := make([]map[string]interface{}, len(horarios))
+	for i, horario := range horarios {
+		horariosResponse[i] = map[string]interface{}{
+			"id_horario_chofer":    horario.ID,
+			"id_usuario":           horario.IDUsuario,
+			"id_sede":              horario.IDSede,
+			"hora_inicio":          horario.HoraInicio.Format("15:04"),
+			"hora_fin":             horario.HoraFin.Format("15:04"),
+			"disponible_lunes":     horario.DisponibleLunes,
+			"disponible_martes":    horario.DisponibleMartes,
+			"disponible_miercoles": horario.DisponibleMiercoles,
+			"disponible_jueves":    horario.DisponibleJueves,
+			"disponible_viernes":   horario.DisponibleViernes,
+			"disponible_sabado":    horario.DisponibleSabado,
+			"disponible_domingo":   horario.DisponibleDomingo,
+			"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+			"eliminado":            horario.Eliminado,
+			"nombre_chofer":        horario.NombreChofer,
+			"apellidos_chofer":     horario.ApellidosChofer,
+			"documento_chofer":     horario.DocumentoChofer,
+			"telefono_chofer":      horario.TelefonoChofer,
+			"nombre_sede":          horario.NombreSede,
+		}
+
+		// Formatear fecha_fin si existe
+		if horario.FechaFin != nil {
+			horariosResponse[i]["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+		} else {
+			horariosResponse[i]["fecha_fin"] = nil
+		}
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios de chofer listados exitosamente", horarios))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios de chofer listados exitosamente", horariosResponse))
 }
 
 // ListByChofer lista todos los horarios de un chofer específico
@@ -152,8 +215,41 @@ func (c *HorarioChoferController) ListByChofer(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horariosResponse := make([]map[string]interface{}, len(horarios))
+	for i, horario := range horarios {
+		horariosResponse[i] = map[string]interface{}{
+			"id_horario_chofer":    horario.ID,
+			"id_usuario":           horario.IDUsuario,
+			"id_sede":              horario.IDSede,
+			"hora_inicio":          horario.HoraInicio.Format("15:04"),
+			"hora_fin":             horario.HoraFin.Format("15:04"),
+			"disponible_lunes":     horario.DisponibleLunes,
+			"disponible_martes":    horario.DisponibleMartes,
+			"disponible_miercoles": horario.DisponibleMiercoles,
+			"disponible_jueves":    horario.DisponibleJueves,
+			"disponible_viernes":   horario.DisponibleViernes,
+			"disponible_sabado":    horario.DisponibleSabado,
+			"disponible_domingo":   horario.DisponibleDomingo,
+			"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+			"eliminado":            horario.Eliminado,
+			"nombre_chofer":        horario.NombreChofer,
+			"apellidos_chofer":     horario.ApellidosChofer,
+			"documento_chofer":     horario.DocumentoChofer,
+			"telefono_chofer":      horario.TelefonoChofer,
+			"nombre_sede":          horario.NombreSede,
+		}
+
+		// Formatear fecha_fin si existe
+		if horario.FechaFin != nil {
+			horariosResponse[i]["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+		} else {
+			horariosResponse[i]["fecha_fin"] = nil
+		}
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios del chofer listados exitosamente", horarios))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios del chofer listados exitosamente", horariosResponse))
 }
 
 // ListActiveByChofer lista los horarios activos de un chofer
@@ -172,8 +268,41 @@ func (c *HorarioChoferController) ListActiveByChofer(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horariosResponse := make([]map[string]interface{}, len(horarios))
+	for i, horario := range horarios {
+		horariosResponse[i] = map[string]interface{}{
+			"id_horario_chofer":    horario.ID,
+			"id_usuario":           horario.IDUsuario,
+			"id_sede":              horario.IDSede,
+			"hora_inicio":          horario.HoraInicio.Format("15:04"),
+			"hora_fin":             horario.HoraFin.Format("15:04"),
+			"disponible_lunes":     horario.DisponibleLunes,
+			"disponible_martes":    horario.DisponibleMartes,
+			"disponible_miercoles": horario.DisponibleMiercoles,
+			"disponible_jueves":    horario.DisponibleJueves,
+			"disponible_viernes":   horario.DisponibleViernes,
+			"disponible_sabado":    horario.DisponibleSabado,
+			"disponible_domingo":   horario.DisponibleDomingo,
+			"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+			"eliminado":            horario.Eliminado,
+			"nombre_chofer":        horario.NombreChofer,
+			"apellidos_chofer":     horario.ApellidosChofer,
+			"documento_chofer":     horario.DocumentoChofer,
+			"telefono_chofer":      horario.TelefonoChofer,
+			"nombre_sede":          horario.NombreSede,
+		}
+
+		// Formatear fecha_fin si existe
+		if horario.FechaFin != nil {
+			horariosResponse[i]["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+		} else {
+			horariosResponse[i]["fecha_fin"] = nil
+		}
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios activos del chofer listados exitosamente", horarios))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios activos del chofer listados exitosamente", horariosResponse))
 }
 
 // ListByDia lista todos los horarios de choferes disponibles para un día específico
@@ -192,14 +321,47 @@ func (c *HorarioChoferController) ListByDia(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horariosResponse := make([]map[string]interface{}, len(horarios))
+	for i, horario := range horarios {
+		horariosResponse[i] = map[string]interface{}{
+			"id_horario_chofer":    horario.ID,
+			"id_usuario":           horario.IDUsuario,
+			"id_sede":              horario.IDSede,
+			"hora_inicio":          horario.HoraInicio.Format("15:04"),
+			"hora_fin":             horario.HoraFin.Format("15:04"),
+			"disponible_lunes":     horario.DisponibleLunes,
+			"disponible_martes":    horario.DisponibleMartes,
+			"disponible_miercoles": horario.DisponibleMiercoles,
+			"disponible_jueves":    horario.DisponibleJueves,
+			"disponible_viernes":   horario.DisponibleViernes,
+			"disponible_sabado":    horario.DisponibleSabado,
+			"disponible_domingo":   horario.DisponibleDomingo,
+			"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+			"eliminado":            horario.Eliminado,
+			"nombre_chofer":        horario.NombreChofer,
+			"apellidos_chofer":     horario.ApellidosChofer,
+			"documento_chofer":     horario.DocumentoChofer,
+			"telefono_chofer":      horario.TelefonoChofer,
+			"nombre_sede":          horario.NombreSede,
+		}
+
+		// Formatear fecha_fin si existe
+		if horario.FechaFin != nil {
+			horariosResponse[i]["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+		} else {
+			horariosResponse[i]["fecha_fin"] = nil
+		}
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios de choferes listados exitosamente", horarios))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios de choferes por día listados exitosamente", horariosResponse))
 }
 
 // GetMyActiveHorarios obtiene los horarios activos del chofer autenticado
 func (c *HorarioChoferController) GetMyActiveHorarios(ctx *gin.Context) {
 	// Obtener ID del usuario autenticado del contexto
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, utils.ErrorResponse("Usuario no autenticado", nil))
 		return
@@ -212,6 +374,39 @@ func (c *HorarioChoferController) GetMyActiveHorarios(ctx *gin.Context) {
 		return
 	}
 
+	// Formatear horas y fechas para la respuesta
+	horariosResponse := make([]map[string]interface{}, len(horarios))
+	for i, horario := range horarios {
+		horariosResponse[i] = map[string]interface{}{
+			"id_horario_chofer":    horario.ID,
+			"id_usuario":           horario.IDUsuario,
+			"id_sede":              horario.IDSede,
+			"hora_inicio":          horario.HoraInicio.Format("15:04"),
+			"hora_fin":             horario.HoraFin.Format("15:04"),
+			"disponible_lunes":     horario.DisponibleLunes,
+			"disponible_martes":    horario.DisponibleMartes,
+			"disponible_miercoles": horario.DisponibleMiercoles,
+			"disponible_jueves":    horario.DisponibleJueves,
+			"disponible_viernes":   horario.DisponibleViernes,
+			"disponible_sabado":    horario.DisponibleSabado,
+			"disponible_domingo":   horario.DisponibleDomingo,
+			"fecha_inicio":         horario.FechaInicio.Format("2006-01-02"),
+			"eliminado":            horario.Eliminado,
+			"nombre_chofer":        horario.NombreChofer,
+			"apellidos_chofer":     horario.ApellidosChofer,
+			"documento_chofer":     horario.DocumentoChofer,
+			"telefono_chofer":      horario.TelefonoChofer,
+			"nombre_sede":          horario.NombreSede,
+		}
+
+		// Formatear fecha_fin si existe
+		if horario.FechaFin != nil {
+			horariosResponse[i]["fecha_fin"] = horario.FechaFin.Format("2006-01-02")
+		} else {
+			horariosResponse[i]["fecha_fin"] = nil
+		}
+	}
+
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios activos obtenidos exitosamente", horarios))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Mis horarios activos obtenidos exitosamente", horariosResponse))
 }

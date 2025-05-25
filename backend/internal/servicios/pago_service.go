@@ -2,8 +2,8 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 	"time"
 )
 
@@ -13,6 +13,7 @@ type PagoService struct {
 	reservaRepo    *repositorios.ReservaRepository
 	metodoPagoRepo *repositorios.MetodoPagoRepository
 	canalVentaRepo *repositorios.CanalVentaRepository
+	sedeRepo       *repositorios.SedeRepository // Añadido repositorio de sede
 }
 
 // NewPagoService crea una nueva instancia de PagoService
@@ -21,12 +22,14 @@ func NewPagoService(
 	reservaRepo *repositorios.ReservaRepository,
 	metodoPagoRepo *repositorios.MetodoPagoRepository,
 	canalVentaRepo *repositorios.CanalVentaRepository,
+	sedeRepo *repositorios.SedeRepository, // Añadido repositorio de sede
 ) *PagoService {
 	return &PagoService{
 		pagoRepo:       pagoRepo,
 		reservaRepo:    reservaRepo,
 		metodoPagoRepo: metodoPagoRepo,
 		canalVentaRepo: canalVentaRepo,
+		sedeRepo:       sedeRepo, // Asignado repositorio de sede
 	}
 }
 
@@ -53,6 +56,12 @@ func (s *PagoService) Create(pago *entidades.NuevoPagoRequest) (int, error) {
 	_, err = s.canalVentaRepo.GetByID(pago.IDCanal)
 	if err != nil {
 		return 0, errors.New("el canal de venta especificado no existe")
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(pago.IDSede)
+	if err != nil {
+		return 0, errors.New("la sede especificada no existe")
 	}
 
 	// Verificar que el monto sea positivo
@@ -97,6 +106,12 @@ func (s *PagoService) Update(id int, pago *entidades.ActualizarPagoRequest) erro
 	_, err = s.canalVentaRepo.GetByID(pago.IDCanal)
 	if err != nil {
 		return errors.New("el canal de venta especificado no existe")
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(pago.IDSede)
+	if err != nil {
+		return errors.New("la sede especificada no existe")
 	}
 
 	// Verificar que el monto sea positivo
@@ -224,4 +239,16 @@ func (s *PagoService) ListByCliente(idCliente int) ([]*entidades.Pago, error) {
 
 	// Listar pagos por cliente
 	return s.pagoRepo.ListByCliente(idCliente)
+}
+
+// ListBySede lista todos los pagos de una sede específica
+func (s *PagoService) ListBySede(idSede int) ([]*entidades.Pago, error) {
+	// Verificar que la sede existe
+	_, err := s.sedeRepo.GetByID(idSede)
+	if err != nil {
+		return nil, errors.New("la sede especificada no existe")
+	}
+
+	// Listar pagos por sede
+	return s.pagoRepo.ListBySede(idSede)
 }

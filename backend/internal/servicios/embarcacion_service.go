@@ -2,8 +2,8 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 )
 
 // EmbarcacionService maneja la lógica de negocio para embarcaciones
@@ -25,6 +25,9 @@ func NewEmbarcacionService(
 
 // Create crea una nueva embarcación
 func (s *EmbarcacionService) Create(embarcacion *entidades.NuevaEmbarcacionRequest) (int, error) {
+	// Verificar que la sede exista
+	// Esta verificación debe implementarse si tienes un repositorio de sedes
+
 	// Verificar si ya existe embarcación con el mismo nombre
 	existingNombre, err := s.embarcacionRepo.GetByNombre(embarcacion.Nombre)
 	if err == nil && existingNombre != nil {
@@ -39,6 +42,14 @@ func (s *EmbarcacionService) Create(embarcacion *entidades.NuevaEmbarcacionReque
 
 	if chofer.Rol != "CHOFER" {
 		return 0, errors.New("el usuario especificado no es un chofer")
+	}
+
+	// Validar que el estado sea uno de los permitidos
+	if embarcacion.Estado != "DISPONIBLE" &&
+		embarcacion.Estado != "OCUPADA" &&
+		embarcacion.Estado != "MANTENIMIENTO" &&
+		embarcacion.Estado != "FUERA_DE_SERVICIO" {
+		return 0, errors.New("estado de embarcación no válido")
 	}
 
 	// Crear embarcación
@@ -76,6 +87,14 @@ func (s *EmbarcacionService) Update(id int, embarcacion *entidades.ActualizarEmb
 		return errors.New("el usuario especificado no es un chofer")
 	}
 
+	// Validar que el estado sea uno de los permitidos
+	if embarcacion.Estado != "DISPONIBLE" &&
+		embarcacion.Estado != "OCUPADA" &&
+		embarcacion.Estado != "MANTENIMIENTO" &&
+		embarcacion.Estado != "FUERA_DE_SERVICIO" {
+		return errors.New("estado de embarcación no válido")
+	}
+
 	// Actualizar embarcación
 	return s.embarcacionRepo.Update(id, embarcacion)
 }
@@ -88,7 +107,7 @@ func (s *EmbarcacionService) Delete(id int) error {
 		return err
 	}
 
-	// Eliminar embarcación
+	// Eliminar embarcación (borrado lógico)
 	return s.embarcacionRepo.Delete(id)
 }
 

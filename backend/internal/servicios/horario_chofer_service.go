@@ -2,8 +2,8 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 	"time"
 )
 
@@ -16,16 +16,19 @@ func parseTime(timeStr string) (time.Time, error) {
 type HorarioChoferService struct {
 	horarioChoferRepo *repositorios.HorarioChoferRepository
 	usuarioRepo       *repositorios.UsuarioRepository
+	sedeRepo          *repositorios.SedeRepository
 }
 
 // NewHorarioChoferService crea una nueva instancia de HorarioChoferService
 func NewHorarioChoferService(
 	horarioChoferRepo *repositorios.HorarioChoferRepository,
 	usuarioRepo *repositorios.UsuarioRepository,
+	sedeRepo *repositorios.SedeRepository,
 ) *HorarioChoferService {
 	return &HorarioChoferService{
 		horarioChoferRepo: horarioChoferRepo,
 		usuarioRepo:       usuarioRepo,
+		sedeRepo:          sedeRepo,
 	}
 }
 
@@ -41,6 +44,12 @@ func (s *HorarioChoferService) Create(horario *entidades.NuevoHorarioChoferReque
 		return 0, errors.New("el usuario especificado no es un chofer")
 	}
 
+	// Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(horario.IDSede)
+	if err != nil {
+		return 0, errors.New("la sede especificada no existe")
+	}
+
 	// Convertir strings HH:MM a time.Time para verificar solapamiento
 	horaInicio, err := parseTime(horario.HoraInicio)
 	if err != nil {
@@ -50,6 +59,11 @@ func (s *HorarioChoferService) Create(horario *entidades.NuevoHorarioChoferReque
 	horaFin, err := parseTime(horario.HoraFin)
 	if err != nil {
 		return 0, errors.New("formato de hora de fin inválido, debe ser HH:MM")
+	}
+
+	// Verificar que la hora de fin sea posterior a la hora de inicio
+	if horaInicio.Equal(horaFin) || horaInicio.After(horaFin) {
+		return 0, errors.New("la hora de fin debe ser posterior a la hora de inicio")
 	}
 
 	// Verificar que la fecha de inicio no sea posterior a la fecha de fin (si existe)
@@ -101,6 +115,12 @@ func (s *HorarioChoferService) Update(id int, horario *entidades.ActualizarHorar
 		return errors.New("el usuario especificado no es un chofer")
 	}
 
+	// Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(horario.IDSede)
+	if err != nil {
+		return errors.New("la sede especificada no existe")
+	}
+
 	// Convertir strings HH:MM a time.Time para verificar solapamiento
 	horaInicio, err := parseTime(horario.HoraInicio)
 	if err != nil {
@@ -110,6 +130,11 @@ func (s *HorarioChoferService) Update(id int, horario *entidades.ActualizarHorar
 	horaFin, err := parseTime(horario.HoraFin)
 	if err != nil {
 		return errors.New("formato de hora de fin inválido, debe ser HH:MM")
+	}
+
+	// Verificar que la hora de fin sea posterior a la hora de inicio
+	if horaInicio.Equal(horaFin) || horaInicio.After(horaFin) {
+		return errors.New("la hora de fin debe ser posterior a la hora de inicio")
 	}
 
 	// Verificar que la fecha de inicio no sea posterior a la fecha de fin (si existe)
@@ -147,7 +172,7 @@ func (s *HorarioChoferService) Update(id int, horario *entidades.ActualizarHorar
 	return s.horarioChoferRepo.Update(id, horario)
 }
 
-// Delete elimina un horario de chofer
+// Delete elimina un horario de chofer (borrado lógico)
 func (s *HorarioChoferService) Delete(id int) error {
 	// Verificar que el horario de chofer existe
 	_, err := s.horarioChoferRepo.GetByID(id)
@@ -155,7 +180,7 @@ func (s *HorarioChoferService) Delete(id int) error {
 		return err
 	}
 
-	// Eliminar horario de chofer
+	// Eliminar horario de chofer (borrado lógico)
 	return s.horarioChoferRepo.Delete(id)
 }
 

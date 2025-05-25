@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -103,7 +103,7 @@ func (c *TipoTourController) Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tipo de tour actualizado exitosamente", nil))
 }
 
-// Delete elimina un tipo de tour
+// Delete elimina un tipo de tour (borrado lógico)
 func (c *TipoTourController) Delete(ctx *gin.Context) {
 	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
@@ -115,7 +115,7 @@ func (c *TipoTourController) Delete(ctx *gin.Context) {
 	// Eliminar tipo de tour
 	err = c.tipoTourService.Delete(id)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al eliminar tipo de tour", err))
+		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Error al eliminar tipo de tour", err))
 		return
 	}
 
@@ -134,4 +134,24 @@ func (c *TipoTourController) List(ctx *gin.Context) {
 
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tipos de tour listados exitosamente", tiposTour))
+}
+
+// ListBySede lista todos los tipos de tour de una sede específica
+func (c *TipoTourController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de la sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+		return
+	}
+
+	// Listar tipos de tour de la sede
+	tiposTour, err := c.tipoTourService.ListBySede(idSede)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tipos de tour de la sede", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tipos de tour de la sede listados exitosamente", tiposTour))
 }

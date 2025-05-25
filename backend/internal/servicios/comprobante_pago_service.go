@@ -2,8 +2,8 @@ package servicios
 
 import (
 	"errors"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/repositorios"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/repositorios"
 	"time"
 )
 
@@ -12,6 +12,7 @@ type ComprobantePagoService struct {
 	comprobantePagoRepo *repositorios.ComprobantePagoRepository
 	reservaRepo         *repositorios.ReservaRepository
 	pagoRepo            *repositorios.PagoRepository
+	sedeRepo            *repositorios.SedeRepository // Añadido repositorio de sede
 }
 
 // NewComprobantePagoService crea una nueva instancia de ComprobantePagoService
@@ -19,11 +20,13 @@ func NewComprobantePagoService(
 	comprobantePagoRepo *repositorios.ComprobantePagoRepository,
 	reservaRepo *repositorios.ReservaRepository,
 	pagoRepo *repositorios.PagoRepository,
+	sedeRepo *repositorios.SedeRepository, // Añadido repositorio de sede
 ) *ComprobantePagoService {
 	return &ComprobantePagoService{
 		comprobantePagoRepo: comprobantePagoRepo,
 		reservaRepo:         reservaRepo,
 		pagoRepo:            pagoRepo,
+		sedeRepo:            sedeRepo, // Asignado repositorio de sede
 	}
 }
 
@@ -38,6 +41,12 @@ func (s *ComprobantePagoService) Create(comprobante *entidades.NuevoComprobanteP
 	// Verificar que la reserva no esté cancelada
 	if reserva.Estado == "CANCELADA" {
 		return 0, errors.New("no se puede emitir un comprobante para una reserva cancelada")
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(comprobante.IDSede)
+	if err != nil {
+		return 0, errors.New("la sede especificada no existe")
 	}
 
 	// Verificar que el número de comprobante no exista para este tipo
@@ -92,6 +101,12 @@ func (s *ComprobantePagoService) Update(id int, comprobante *entidades.Actualiza
 	existingComprobante, err := s.comprobantePagoRepo.GetByID(id)
 	if err != nil {
 		return err
+	}
+
+	// Verificar que la sede existe
+	_, err = s.sedeRepo.GetByID(comprobante.IDSede)
+	if err != nil {
+		return errors.New("la sede especificada no existe")
 	}
 
 	// Si cambia el tipo o número, verificar que no exista otro comprobante con esos datos
@@ -176,7 +191,6 @@ func (s *ComprobantePagoService) List() ([]*entidades.ComprobantePago, error) {
 }
 
 // ListByReserva lista todos los comprobantes de pago de una reserva específica
-// ListByReserva lista todos los comprobantes de pago de una reserva específica
 func (s *ComprobantePagoService) ListByReserva(idReserva int) ([]*entidades.ComprobantePago, error) {
 	// Verificar que la reserva existe
 	_, err := s.reservaRepo.GetByID(idReserva)
@@ -224,4 +238,14 @@ func (s *ComprobantePagoService) ListByCliente(idCliente int) ([]*entidades.Comp
 	return s.comprobantePagoRepo.ListByCliente(idCliente)
 }
 
-// Listar comprobantes por
+// ListBySede lista todos los comprobantes de pago de una sede específica
+func (s *ComprobantePagoService) ListBySede(idSede int) ([]*entidades.ComprobantePago, error) {
+	// Verificar que la sede existe
+	_, err := s.sedeRepo.GetByID(idSede)
+	if err != nil {
+		return nil, errors.New("la sede especificada no existe")
+	}
+
+	// Listar comprobantes por sede
+	return s.comprobantePagoRepo.ListBySede(idSede)
+}

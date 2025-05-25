@@ -2,9 +2,9 @@ package controladores
 
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 	"time"
 
@@ -36,6 +36,12 @@ func (c *TourProgramadoController) Create(ctx *gin.Context) {
 	// Validar datos
 	if err := utils.ValidateStruct(tourReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	// Verificar que id_sede no sea cero
+	if tourReq.IDSede == 0 {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("El ID de sede es requerido", nil))
 		return
 	}
 
@@ -90,6 +96,12 @@ func (c *TourProgramadoController) Update(ctx *gin.Context) {
 	// Validar datos
 	if err := utils.ValidateStruct(tourReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	// Verificar que id_sede no sea cero
+	if tourReq.IDSede == 0 {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("El ID de sede es requerido", nil))
 		return
 	}
 
@@ -335,4 +347,24 @@ func (c *TourProgramadoController) GetDisponibilidadDia(ctx *gin.Context) {
 
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Disponibilidad de tours obtenida exitosamente", tours))
+}
+
+// ListBySede lista todos los tours programados de una sede específica
+func (c *TourProgramadoController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+		return
+	}
+
+	// Listar tours programados por sede
+	tours, err := c.tourProgramadoService.ListBySede(idSede)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por sede", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
 }

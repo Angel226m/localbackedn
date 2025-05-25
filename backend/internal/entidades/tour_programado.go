@@ -8,6 +8,7 @@ type TourProgramado struct {
 	IDTipoTour     int       `json:"id_tipo_tour" db:"id_tipo_tour"`
 	IDEmbarcacion  int       `json:"id_embarcacion" db:"id_embarcacion"`
 	IDHorario      int       `json:"id_horario" db:"id_horario"`
+	IDSede         int       `json:"id_sede" db:"id_sede"` // Agregado el campo id_sede
 	Fecha          time.Time `json:"fecha" db:"fecha"`
 	CupoMaximo     int       `json:"cupo_maximo" db:"cupo_maximo"`
 	CupoDisponible int       `json:"cupo_disponible" db:"cupo_disponible"`
@@ -30,6 +31,7 @@ type NuevoTourProgramadoRequest struct {
 	IDTipoTour    int       `json:"id_tipo_tour" validate:"required"`
 	IDEmbarcacion int       `json:"id_embarcacion" validate:"required"`
 	IDHorario     int       `json:"id_horario" validate:"required"`
+	IDSede        int       `json:"id_sede" validate:"required"` // Agregado el campo id_sede
 	Fecha         time.Time `json:"fecha" validate:"required"`
 	CupoMaximo    int       `json:"cupo_maximo" validate:"required,min=1"`
 	Estado        string    `json:"estado" validate:"omitempty,oneof=PROGRAMADO COMPLETADO CANCELADO"`
@@ -40,6 +42,7 @@ type ActualizarTourProgramadoRequest struct {
 	IDTipoTour     int       `json:"id_tipo_tour" validate:"required"`
 	IDEmbarcacion  int       `json:"id_embarcacion" validate:"required"`
 	IDHorario      int       `json:"id_horario" validate:"required"`
+	IDSede         int       `json:"id_sede" validate:"required"` // Agregado el campo id_sede
 	Fecha          time.Time `json:"fecha" validate:"required"`
 	CupoMaximo     int       `json:"cupo_maximo" validate:"required,min=1"`
 	CupoDisponible int       `json:"cupo_disponible" validate:"required,min=0"`

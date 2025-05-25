@@ -3,7 +3,7 @@ package repositorios
 import (
 	"database/sql"
 	"errors"
-	"sistema-tours/internal/entidades"
+	"sistema-toursseft/internal/entidades"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func NewTourProgramadoRepository(db *sql.DB) *TourProgramadoRepository {
 func (r *TourProgramadoRepository) GetByID(id int) (*entidades.TourProgramado, error) {
 	tour := &entidades.TourProgramado{}
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -37,7 +37,7 @@ func (r *TourProgramadoRepository) GetByID(id int) (*entidades.TourProgramado, e
 
 	err := r.db.QueryRow(query, id).Scan(
 		&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-		&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+		&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 		&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 		&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 		&tour.NombreChofer, &tour.ApellidosChofer,
@@ -78,9 +78,9 @@ func (r *TourProgramadoRepository) Create(tour *entidades.NuevoTourProgramadoReq
 
 	// Crear tour programado
 	var id int
-	query := `INSERT INTO tour_programado (id_tipo_tour, id_embarcacion, id_horario, 
+	query := `INSERT INTO tour_programado (id_tipo_tour, id_embarcacion, id_horario, id_sede,
               fecha, cupo_maximo, cupo_disponible, estado) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
               RETURNING id_tour_programado`
 
 	err = r.db.QueryRow(
@@ -88,6 +88,7 @@ func (r *TourProgramadoRepository) Create(tour *entidades.NuevoTourProgramadoReq
 		tour.IDTipoTour,
 		tour.IDEmbarcacion,
 		tour.IDHorario,
+		tour.IDSede, // Agregado el campo id_sede
 		tour.Fecha,
 		tour.CupoMaximo,
 		tour.CupoMaximo, // Inicialmente cupo_disponible = cupo_maximo
@@ -122,17 +123,19 @@ func (r *TourProgramadoRepository) Update(id int, tour *entidades.ActualizarTour
               id_tipo_tour = $1, 
               id_embarcacion = $2, 
               id_horario = $3, 
-              fecha = $4, 
-              cupo_maximo = $5,
-              cupo_disponible = $6,
-              estado = $7
-              WHERE id_tour_programado = $8`
+              id_sede = $4,  
+              fecha = $5, 
+              cupo_maximo = $6,
+              cupo_disponible = $7,
+              estado = $8
+              WHERE id_tour_programado = $9`
 
 	_, err = r.db.Exec(
 		query,
 		tour.IDTipoTour,
 		tour.IDEmbarcacion,
 		tour.IDHorario,
+		tour.IDSede, // Agregado el campo id_sede
 		tour.Fecha,
 		tour.CupoMaximo,
 		tour.CupoDisponible,
@@ -180,7 +183,7 @@ func (r *TourProgramadoRepository) Delete(id int) error {
 // List lista todos los tours programados
 func (r *TourProgramadoRepository) List() ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -204,7 +207,7 @@ func (r *TourProgramadoRepository) List() ([]*entidades.TourProgramado, error) {
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -226,7 +229,7 @@ func (r *TourProgramadoRepository) List() ([]*entidades.TourProgramado, error) {
 // ListByFecha lista todos los tours programados para una fecha específica
 func (r *TourProgramadoRepository) ListByFecha(fecha time.Time) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -251,7 +254,7 @@ func (r *TourProgramadoRepository) ListByFecha(fecha time.Time) ([]*entidades.To
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -273,7 +276,7 @@ func (r *TourProgramadoRepository) ListByFecha(fecha time.Time) ([]*entidades.To
 // ListByRangoFechas lista todos los tours programados para un rango de fechas
 func (r *TourProgramadoRepository) ListByRangoFechas(fechaInicio, fechaFin time.Time) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -298,7 +301,7 @@ func (r *TourProgramadoRepository) ListByRangoFechas(fechaInicio, fechaFin time.
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -320,7 +323,7 @@ func (r *TourProgramadoRepository) ListByRangoFechas(fechaInicio, fechaFin time.
 // ListByEstado lista todos los tours programados por estado
 func (r *TourProgramadoRepository) ListByEstado(estado string) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -345,7 +348,7 @@ func (r *TourProgramadoRepository) ListByEstado(estado string) ([]*entidades.Tou
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -367,7 +370,7 @@ func (r *TourProgramadoRepository) ListByEstado(estado string) ([]*entidades.Tou
 // ListByEmbarcacion lista todos los tours programados por embarcación
 func (r *TourProgramadoRepository) ListByEmbarcacion(idEmbarcacion int) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -392,7 +395,7 @@ func (r *TourProgramadoRepository) ListByEmbarcacion(idEmbarcacion int) ([]*enti
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -414,7 +417,7 @@ func (r *TourProgramadoRepository) ListByEmbarcacion(idEmbarcacion int) ([]*enti
 // ListByChofer lista todos los tours programados asociados a un chofer
 func (r *TourProgramadoRepository) ListByChofer(idChofer int) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -439,7 +442,7 @@ func (r *TourProgramadoRepository) ListByChofer(idChofer int) ([]*entidades.Tour
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -461,7 +464,7 @@ func (r *TourProgramadoRepository) ListByChofer(idChofer int) ([]*entidades.Tour
 // ListToursProgramadosDisponibles lista todos los tours programados disponibles para reservación (estado PROGRAMADO y con cupo)
 func (r *TourProgramadoRepository) ListToursProgramadosDisponibles() ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -488,7 +491,7 @@ func (r *TourProgramadoRepository) ListToursProgramadosDisponibles() ([]*entidad
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -510,7 +513,7 @@ func (r *TourProgramadoRepository) ListToursProgramadosDisponibles() ([]*entidad
 // ListByTipoTour lista todos los tours programados por tipo de tour
 func (r *TourProgramadoRepository) ListByTipoTour(idTipoTour int) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -535,7 +538,7 @@ func (r *TourProgramadoRepository) ListByTipoTour(idTipoTour int) ([]*entidades.
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,
@@ -557,7 +560,7 @@ func (r *TourProgramadoRepository) ListByTipoTour(idTipoTour int) ([]*entidades.
 // GetDisponibilidadDia retorna la disponibilidad de tours para una fecha específica por tipo de tour
 func (r *TourProgramadoRepository) GetDisponibilidadDia(fecha time.Time) ([]*entidades.TourProgramado, error) {
 	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
-              tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
               tt.nombre, tt.precio_base, tt.duracion_minutos,
               e.nombre, e.capacidad,
               u.nombres, u.apellidos,
@@ -584,7 +587,54 @@ func (r *TourProgramadoRepository) GetDisponibilidadDia(fecha time.Time) ([]*ent
 		tour := &entidades.TourProgramado{}
 		err := rows.Scan(
 			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
-			&tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
+			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
+			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
+			&tour.NombreChofer, &tour.ApellidosChofer,
+			&tour.HoraInicio, &tour.HoraFin,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tours = append(tours, tour)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tours, nil
+}
+
+// ListBySede lista todos los tours programados de una sede específica
+func (r *TourProgramadoRepository) ListBySede(idSede int) ([]*entidades.TourProgramado, error) {
+	query := `SELECT tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, 
+              tp.id_sede, tp.fecha, tp.cupo_maximo, tp.cupo_disponible, tp.estado,
+              tt.nombre, tt.precio_base, tt.duracion_minutos,
+              e.nombre, e.capacidad,
+              u.nombres, u.apellidos,
+              TO_CHAR(ht.hora_inicio, 'HH24:MI'), TO_CHAR(ht.hora_fin, 'HH24:MI')
+              FROM tour_programado tp
+              INNER JOIN tipo_tour tt ON tp.id_tipo_tour = tt.id_tipo_tour
+              INNER JOIN embarcacion e ON tp.id_embarcacion = e.id_embarcacion
+              INNER JOIN usuario u ON e.id_usuario = u.id_usuario
+              INNER JOIN horario_tour ht ON tp.id_horario = ht.id_horario
+              WHERE tp.id_sede = $1
+              ORDER BY tp.fecha DESC, ht.hora_inicio ASC`
+
+	rows, err := r.db.Query(query, idSede)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tours := []*entidades.TourProgramado{}
+
+	for rows.Next() {
+		tour := &entidades.TourProgramado{}
+		err := rows.Scan(
+			&tour.ID, &tour.IDTipoTour, &tour.IDEmbarcacion, &tour.IDHorario,
+			&tour.IDSede, &tour.Fecha, &tour.CupoMaximo, &tour.CupoDisponible, &tour.Estado,
 			&tour.NombreTipoTour, &tour.PrecioBase, &tour.DuracionMinutos,
 			&tour.NombreEmbarcacion, &tour.CapacidadEmbarcacion,
 			&tour.NombreChofer, &tour.ApellidosChofer,

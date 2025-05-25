@@ -3,7 +3,7 @@ package repositorios
 import (
 	"database/sql"
 	"errors"
-	"sistema-tours/internal/entidades"
+	"sistema-toursseft/internal/entidades"
 	"strconv"
 	"time"
 )
@@ -23,21 +23,23 @@ func NewHorarioChoferRepository(db *sql.DB) *HorarioChoferRepository {
 // GetByID obtiene un horario de chofer por su ID
 func (r *HorarioChoferRepository) GetByID(id int) (*entidades.HorarioChofer, error) {
 	horario := &entidades.HorarioChofer{}
-	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.hora_inicio, hc.hora_fin,
+	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.id_sede, hc.hora_inicio, hc.hora_fin,
               hc.disponible_lunes, hc.disponible_martes, hc.disponible_miercoles, 
               hc.disponible_jueves, hc.disponible_viernes, hc.disponible_sabado, 
-              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin,
-              u.nombres, u.apellidos, u.numero_documento, u.telefono
+              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin, hc.eliminado,
+              u.nombres, u.apellidos, u.numero_documento, u.telefono, s.nombre
               FROM horario_chofer hc
               INNER JOIN usuario u ON hc.id_usuario = u.id_usuario
+              INNER JOIN sede s ON hc.id_sede = s.id_sede
               WHERE hc.id_horario_chofer = $1`
 
 	err := r.db.QueryRow(query, id).Scan(
-		&horario.ID, &horario.IDUsuario, &horario.HoraInicio, &horario.HoraFin,
+		&horario.ID, &horario.IDUsuario, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 		&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 		&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-		&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin,
+		&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin, &horario.Eliminado,
 		&horario.NombreChofer, &horario.ApellidosChofer, &horario.DocumentoChofer, &horario.TelefonoChofer,
+		&horario.NombreSede,
 	)
 
 	if err != nil {
@@ -71,16 +73,17 @@ func (r *HorarioChoferRepository) Create(horario *entidades.NuevoHorarioChoferRe
 	}
 
 	var id int
-	query := `INSERT INTO horario_chofer (id_usuario, hora_inicio, hora_fin, 
+	query := `INSERT INTO horario_chofer (id_usuario, id_sede, hora_inicio, hora_fin, 
               disponible_lunes, disponible_martes, disponible_miercoles, 
               disponible_jueves, disponible_viernes, disponible_sabado, 
-              disponible_domingo, fecha_inicio, fecha_fin) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+              disponible_domingo, fecha_inicio, fecha_fin, eliminado) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, false) 
               RETURNING id_horario_chofer`
 
 	err = r.db.QueryRow(
 		query,
 		horario.IDUsuario,
+		horario.IDSede,
 		horaInicio,
 		horaFin,
 		horario.DisponibleLunes,
@@ -123,22 +126,25 @@ func (r *HorarioChoferRepository) Update(id int, horario *entidades.ActualizarHo
 
 	query := `UPDATE horario_chofer SET 
               id_usuario = $1, 
-              hora_inicio = $2, 
-              hora_fin = $3, 
-              disponible_lunes = $4, 
-              disponible_martes = $5, 
-              disponible_miercoles = $6, 
-              disponible_jueves = $7, 
-              disponible_viernes = $8, 
-              disponible_sabado = $9, 
-              disponible_domingo = $10,
-              fecha_inicio = $11,
-              fecha_fin = $12
-              WHERE id_horario_chofer = $13`
+              id_sede = $2,
+              hora_inicio = $3, 
+              hora_fin = $4, 
+              disponible_lunes = $5, 
+              disponible_martes = $6, 
+              disponible_miercoles = $7, 
+              disponible_jueves = $8, 
+              disponible_viernes = $9, 
+              disponible_sabado = $10, 
+              disponible_domingo = $11,
+              fecha_inicio = $12,
+              fecha_fin = $13,
+              eliminado = $14
+              WHERE id_horario_chofer = $15`
 
 	_, err = r.db.Exec(
 		query,
 		horario.IDUsuario,
+		horario.IDSede,
 		horaInicio,
 		horaFin,
 		horario.DisponibleLunes,
@@ -150,28 +156,31 @@ func (r *HorarioChoferRepository) Update(id int, horario *entidades.ActualizarHo
 		horario.DisponibleDomingo,
 		horario.FechaInicio,
 		horario.FechaFin,
+		horario.Eliminado,
 		id,
 	)
 
 	return err
 }
 
-// Delete elimina un horario de chofer
+// Delete marca un horario de chofer como eliminado (borrado lógico)
 func (r *HorarioChoferRepository) Delete(id int) error {
-	query := `DELETE FROM horario_chofer WHERE id_horario_chofer = $1`
+	query := `UPDATE horario_chofer SET eliminado = true WHERE id_horario_chofer = $1`
 	_, err := r.db.Exec(query, id)
 	return err
 }
 
-// List lista todos los horarios de chofer
+// List lista todos los horarios de chofer no eliminados
 func (r *HorarioChoferRepository) List() ([]*entidades.HorarioChofer, error) {
-	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.hora_inicio, hc.hora_fin,
+	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.id_sede, hc.hora_inicio, hc.hora_fin,
               hc.disponible_lunes, hc.disponible_martes, hc.disponible_miercoles, 
               hc.disponible_jueves, hc.disponible_viernes, hc.disponible_sabado, 
-              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin,
-              u.nombres, u.apellidos, u.numero_documento, u.telefono
+              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin, hc.eliminado,
+              u.nombres, u.apellidos, u.numero_documento, u.telefono, s.nombre
               FROM horario_chofer hc
               INNER JOIN usuario u ON hc.id_usuario = u.id_usuario
+              INNER JOIN sede s ON hc.id_sede = s.id_sede
+              WHERE hc.eliminado = false
               ORDER BY u.apellidos, u.nombres, hc.fecha_inicio DESC`
 
 	rows, err := r.db.Query(query)
@@ -185,11 +194,12 @@ func (r *HorarioChoferRepository) List() ([]*entidades.HorarioChofer, error) {
 	for rows.Next() {
 		horario := &entidades.HorarioChofer{}
 		err := rows.Scan(
-			&horario.ID, &horario.IDUsuario, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDUsuario, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin,
+			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin, &horario.Eliminado,
 			&horario.NombreChofer, &horario.ApellidosChofer, &horario.DocumentoChofer, &horario.TelefonoChofer,
+			&horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
@@ -204,16 +214,17 @@ func (r *HorarioChoferRepository) List() ([]*entidades.HorarioChofer, error) {
 	return horarios, nil
 }
 
-// ListByChofer lista todos los horarios de un chofer específico
+// ListByChofer lista todos los horarios de un chofer específico que no estén eliminados
 func (r *HorarioChoferRepository) ListByChofer(idChofer int) ([]*entidades.HorarioChofer, error) {
-	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.hora_inicio, hc.hora_fin,
+	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.id_sede, hc.hora_inicio, hc.hora_fin,
               hc.disponible_lunes, hc.disponible_martes, hc.disponible_miercoles, 
               hc.disponible_jueves, hc.disponible_viernes, hc.disponible_sabado, 
-              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin,
-              u.nombres, u.apellidos, u.numero_documento, u.telefono
+              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin, hc.eliminado,
+              u.nombres, u.apellidos, u.numero_documento, u.telefono, s.nombre
               FROM horario_chofer hc
               INNER JOIN usuario u ON hc.id_usuario = u.id_usuario
-              WHERE hc.id_usuario = $1
+              INNER JOIN sede s ON hc.id_sede = s.id_sede
+              WHERE hc.id_usuario = $1 AND hc.eliminado = false
               ORDER BY hc.fecha_inicio DESC`
 
 	rows, err := r.db.Query(query, idChofer)
@@ -227,11 +238,12 @@ func (r *HorarioChoferRepository) ListByChofer(idChofer int) ([]*entidades.Horar
 	for rows.Next() {
 		horario := &entidades.HorarioChofer{}
 		err := rows.Scan(
-			&horario.ID, &horario.IDUsuario, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDUsuario, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin,
+			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin, &horario.Eliminado,
 			&horario.NombreChofer, &horario.ApellidosChofer, &horario.DocumentoChofer, &horario.TelefonoChofer,
+			&horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
@@ -246,18 +258,20 @@ func (r *HorarioChoferRepository) ListByChofer(idChofer int) ([]*entidades.Horar
 	return horarios, nil
 }
 
-// ListActiveByChofer lista los horarios activos de un chofer (donde la fecha actual está dentro del rango fecha_inicio y fecha_fin)
+// ListActiveByChofer lista los horarios activos de un chofer que no estén eliminados
 func (r *HorarioChoferRepository) ListActiveByChofer(idChofer int) ([]*entidades.HorarioChofer, error) {
-	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.hora_inicio, hc.hora_fin,
+	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.id_sede, hc.hora_inicio, hc.hora_fin,
               hc.disponible_lunes, hc.disponible_martes, hc.disponible_miercoles, 
               hc.disponible_jueves, hc.disponible_viernes, hc.disponible_sabado, 
-              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin,
-              u.nombres, u.apellidos, u.numero_documento, u.telefono
+              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin, hc.eliminado,
+              u.nombres, u.apellidos, u.numero_documento, u.telefono, s.nombre
               FROM horario_chofer hc
               INNER JOIN usuario u ON hc.id_usuario = u.id_usuario
+              INNER JOIN sede s ON hc.id_sede = s.id_sede
               WHERE hc.id_usuario = $1
               AND hc.fecha_inicio <= CURRENT_DATE
               AND (hc.fecha_fin IS NULL OR hc.fecha_fin >= CURRENT_DATE)
+              AND hc.eliminado = false
               ORDER BY hc.fecha_inicio DESC`
 
 	rows, err := r.db.Query(query, idChofer)
@@ -271,11 +285,12 @@ func (r *HorarioChoferRepository) ListActiveByChofer(idChofer int) ([]*entidades
 	for rows.Next() {
 		horario := &entidades.HorarioChofer{}
 		err := rows.Scan(
-			&horario.ID, &horario.IDUsuario, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDUsuario, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin,
+			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin, &horario.Eliminado,
 			&horario.NombreChofer, &horario.ApellidosChofer, &horario.DocumentoChofer, &horario.TelefonoChofer,
+			&horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
@@ -290,7 +305,7 @@ func (r *HorarioChoferRepository) ListActiveByChofer(idChofer int) ([]*entidades
 	return horarios, nil
 }
 
-// ListByDia lista todos los horarios de choferes disponibles para un día específico (1=Lunes, 7=Domingo)
+// ListByDia lista todos los horarios de choferes disponibles para un día específico y que no estén eliminados
 func (r *HorarioChoferRepository) ListByDia(diaSemana int) ([]*entidades.HorarioChofer, error) {
 	var condition string
 	switch diaSemana {
@@ -312,16 +327,18 @@ func (r *HorarioChoferRepository) ListByDia(diaSemana int) ([]*entidades.Horario
 		return nil, errors.New("día de la semana inválido, debe ser un número entre 1 (Lunes) y 7 (Domingo)")
 	}
 
-	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.hora_inicio, hc.hora_fin,
+	query := `SELECT hc.id_horario_chofer, hc.id_usuario, hc.id_sede, hc.hora_inicio, hc.hora_fin,
               hc.disponible_lunes, hc.disponible_martes, hc.disponible_miercoles, 
               hc.disponible_jueves, hc.disponible_viernes, hc.disponible_sabado, 
-              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin,
-              u.nombres, u.apellidos, u.numero_documento, u.telefono
+              hc.disponible_domingo, hc.fecha_inicio, hc.fecha_fin, hc.eliminado,
+              u.nombres, u.apellidos, u.numero_documento, u.telefono, s.nombre
               FROM horario_chofer hc
               INNER JOIN usuario u ON hc.id_usuario = u.id_usuario
+              INNER JOIN sede s ON hc.id_sede = s.id_sede
               WHERE ` + condition + `
               AND hc.fecha_inicio <= CURRENT_DATE
               AND (hc.fecha_fin IS NULL OR hc.fecha_fin >= CURRENT_DATE)
+              AND hc.eliminado = false
               ORDER BY u.apellidos, u.nombres, hc.hora_inicio`
 
 	rows, err := r.db.Query(query)
@@ -335,11 +352,12 @@ func (r *HorarioChoferRepository) ListByDia(diaSemana int) ([]*entidades.Horario
 	for rows.Next() {
 		horario := &entidades.HorarioChofer{}
 		err := rows.Scan(
-			&horario.ID, &horario.IDUsuario, &horario.HoraInicio, &horario.HoraFin,
+			&horario.ID, &horario.IDUsuario, &horario.IDSede, &horario.HoraInicio, &horario.HoraFin,
 			&horario.DisponibleLunes, &horario.DisponibleMartes, &horario.DisponibleMiercoles,
 			&horario.DisponibleJueves, &horario.DisponibleViernes, &horario.DisponibleSabado,
-			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin,
+			&horario.DisponibleDomingo, &horario.FechaInicio, &horario.FechaFin, &horario.Eliminado,
 			&horario.NombreChofer, &horario.ApellidosChofer, &horario.DocumentoChofer, &horario.TelefonoChofer,
+			&horario.NombreSede,
 		)
 		if err != nil {
 			return nil, err
@@ -365,7 +383,8 @@ func (r *HorarioChoferRepository) VerifyHorarioOverlap(idChofer int, horaInicio,
                   WHERE id_usuario = $1 
                   AND ((hora_inicio <= $2 AND hora_fin > $2) OR (hora_inicio < $3 AND hora_fin >= $3) OR (hora_inicio >= $2 AND hora_fin <= $3))
                   AND fecha_inicio <= $4
-                  AND (fecha_fin IS NULL OR fecha_fin >= $4)`
+                  AND (fecha_fin IS NULL OR fecha_fin >= $4)
+                  AND eliminado = false`
 		args = []interface{}{idChofer, horaInicio, horaFin, *fechaInicio}
 	} else {
 		// Tiene fecha fin
@@ -376,7 +395,8 @@ func (r *HorarioChoferRepository) VerifyHorarioOverlap(idChofer int, horaInicio,
                     (fecha_inicio <= $4 AND (fecha_fin IS NULL OR fecha_fin >= $4)) OR 
                     (fecha_inicio <= $5 AND (fecha_fin IS NULL OR fecha_fin >= $5)) OR
                     (fecha_inicio >= $4 AND (fecha_fin IS NULL OR fecha_fin <= $5))
-                  )`
+                  )
+                  AND eliminado = false`
 		args = []interface{}{idChofer, horaInicio, horaFin, *fechaInicio, *fechaFin}
 	}
 

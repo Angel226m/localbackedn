@@ -1,8 +1,8 @@
 package entidades_test
 
 import (
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/utils"
 	"testing"
 	"time"
 )
@@ -22,6 +22,8 @@ func TestValidacionNuevoUsuario(t *testing.T) {
 		{
 			nombre: "Usuario válido",
 			usuario: entidades.NuevoUsuarioRequest{
+
+				IdSede:          nil,
 				Nombres:         "Juan",
 				Apellidos:       "Pérez",
 				Correo:          "juan@test.com",
@@ -144,6 +146,7 @@ func TestUsuarioMethods(t *testing.T) {
 	// Crear un usuario de prueba
 	usuario := entidades.Usuario{
 		ID:              1,
+		IdSede:          nil,
 		Nombres:         "Juan",
 		Apellidos:       "Pérez",
 		Correo:          "juan@test.com",
@@ -155,7 +158,8 @@ func TestUsuarioMethods(t *testing.T) {
 		TipoDocumento:   "DNI",
 		NumeroDocumento: "12345678",
 		FechaRegistro:   time.Now(),
-		Estado:          true,
+		Contrasena:      "password123",
+		Eliminado:       true,
 	}
 
 	// Verifica que el usuario tenga los datos correctos

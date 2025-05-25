@@ -9,10 +9,12 @@ type Reserva struct {
 	IDCliente        int       `json:"id_cliente" db:"id_cliente"`
 	IDTourProgramado int       `json:"id_tour_programado" db:"id_tour_programado"`
 	IDCanal          int       `json:"id_canal" db:"id_canal"`
+	IDSede           int       `json:"id_sede" db:"id_sede"`
 	FechaReserva     time.Time `json:"fecha_reserva" db:"fecha_reserva"`
 	TotalPagar       float64   `json:"total_pagar" db:"total_pagar"`
 	Notas            string    `json:"notas" db:"notas"`
 	Estado           string    `json:"estado" db:"estado"` // RESERVADO, CANCELADA, etc.
+	Eliminado        bool      `json:"eliminado" db:"eliminado"`
 
 	// Campos adicionales para mostrar información relacionada
 	NombreCliente   string           `json:"nombre_cliente,omitempty" db:"-"`
@@ -21,6 +23,7 @@ type Reserva struct {
 	FechaTour       string           `json:"fecha_tour,omitempty" db:"-"`
 	HoraTour        string           `json:"hora_tour,omitempty" db:"-"`
 	NombreCanal     string           `json:"nombre_canal,omitempty" db:"-"`
+	NombreSede      string           `json:"nombre_sede,omitempty" db:"-"`
 	CantidadPasajes []PasajeCantidad `json:"cantidad_pasajes,omitempty" db:"-"`
 }
 
@@ -36,6 +39,7 @@ type NuevaReservaRequest struct {
 	IDCliente        int                     `json:"id_cliente" validate:"required"`
 	IDTourProgramado int                     `json:"id_tour_programado" validate:"required"`
 	IDCanal          int                     `json:"id_canal" validate:"required"`
+	IDSede           int                     `json:"id_sede" validate:"required"`
 	IDVendedor       *int                    `json:"id_vendedor,omitempty"` // Opcional, solo si es reserva en LOCAL
 	TotalPagar       float64                 `json:"total_pagar" validate:"required,min=0"`
 	Notas            string                  `json:"notas"`
@@ -53,6 +57,7 @@ type ActualizarReservaRequest struct {
 	IDCliente        int                     `json:"id_cliente" validate:"required"`
 	IDTourProgramado int                     `json:"id_tour_programado" validate:"required"`
 	IDCanal          int                     `json:"id_canal" validate:"required"`
+	IDSede           int                     `json:"id_sede" validate:"required"`
 	IDVendedor       *int                    `json:"id_vendedor,omitempty"` // Opcional, solo si es reserva en LOCAL
 	TotalPagar       float64                 `json:"total_pagar" validate:"required,min=0"`
 	Notas            string                  `json:"notas"`

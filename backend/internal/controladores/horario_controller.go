@@ -1,10 +1,11 @@
 package controladores
 
+/*
 import (
 	"net/http"
-	"sistema-tours/internal/entidades"
-	"sistema-tours/internal/servicios"
-	"sistema-tours/internal/utils"
+	"sistema-toursseft/internal/entidades"
+	"sistema-toursseft/internal/servicios"
+	"sistema-toursseft/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -175,3 +176,4 @@ func (c *HorarioTourController) ListByDia(ctx *gin.Context) {
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Horarios de tour listados exitosamente", horarios))
 }
+*/
