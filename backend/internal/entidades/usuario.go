@@ -7,28 +7,28 @@ import (
 )
 
 // Usuario representa la estructura de un usuario en el sistema
-// Usuario representa la estructura de un usuario en el sistema
 type Usuario struct {
-	ID              int       `json:"id_usuario" db:"id_usuario"`
-	IdSede          *int      `json:"id_sede" db:"id_sede"` // Cambiado a puntero para permitir NULL
-	Nombres         string    `json:"nombres" db:"nombres"`
-	Apellidos       string    `json:"apellidos" db:"apellidos"`
-	Correo          string    `json:"correo" db:"correo"`
-	Telefono        string    `json:"telefono" db:"telefono"`
-	Direccion       string    `json:"direccion" db:"direccion"`
-	FechaNacimiento time.Time `json:"fecha_nacimiento" db:"fecha_nacimiento"`
-	Rol             string    `json:"rol" db:"rol"` // ADMIN, VENDEDOR, CHOFER
-	Nacionalidad    string    `json:"nacionalidad" db:"nacionalidad"`
-	TipoDocumento   string    `json:"tipo_documento" db:"tipo_de_documento"`
-	NumeroDocumento string    `json:"numero_documento" db:"numero_documento"`
-	FechaRegistro   time.Time `json:"fecha_registro" db:"fecha_registro"`
-	Contrasena      string    `json:"-" db:"contrasena"`        // No se devuelve en JSON
-	Eliminado       bool      `json:"eliminado" db:"eliminado"` // Campo para soft delete
+	ID              int              `json:"id_usuario" db:"id_usuario"`
+	IdSede          *int             `json:"id_sede" db:"id_sede"`
+	Nombres         string           `json:"nombres" db:"nombres"`
+	Apellidos       string           `json:"apellidos" db:"apellidos"`
+	Correo          string           `json:"correo" db:"correo"`
+	Telefono        string           `json:"telefono" db:"telefono"`
+	Direccion       string           `json:"direccion" db:"direccion"`
+	FechaNacimiento time.Time        `json:"fecha_nacimiento" db:"fecha_nacimiento"`
+	Rol             string           `json:"rol" db:"rol"` // ADMIN, VENDEDOR, CHOFER
+	Nacionalidad    string           `json:"nacionalidad" db:"nacionalidad"`
+	TipoDocumento   string           `json:"tipo_documento" db:"tipo_de_documento"`
+	NumeroDocumento string           `json:"numero_documento" db:"numero_documento"`
+	FechaRegistro   time.Time        `json:"fecha_registro" db:"fecha_registro"`
+	Contrasena      string           `json:"-" db:"contrasena"`        // No se devuelve en JSON
+	Eliminado       bool             `json:"eliminado" db:"eliminado"` // Campo para soft delete
+	Idiomas         []*UsuarioIdioma `json:"idiomas,omitempty" db:"-"` // Nueva relación muchos a muchos
 }
 
 // NuevoUsuarioRequest representa los datos necesarios para crear un nuevo usuario
 type NuevoUsuarioRequest struct {
-	IdSede          *int      `json:"id_sede"` // Cambiado a puntero para permitir NULL
+	IdSede          *int      `json:"id_sede"`
 	Nombres         string    `json:"nombres" validate:"required"`
 	Apellidos       string    `json:"apellidos" validate:"required"`
 	Correo          string    `json:"correo" validate:"required,email"`
@@ -40,6 +40,7 @@ type NuevoUsuarioRequest struct {
 	TipoDocumento   string    `json:"tipo_documento" validate:"required"`
 	NumeroDocumento string    `json:"numero_documento" validate:"required"`
 	Contrasena      string    `json:"contrasena" validate:"required,min=8"`
+	IdiomasIDs      []int     `json:"idiomas_ids,omitempty"` // Nueva propiedad para IDs de idiomas
 }
 
 // LoginRequest representa los datos necesarios para iniciar sesión

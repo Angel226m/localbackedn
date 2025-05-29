@@ -195,3 +195,59 @@ func (c *UsuarioController) ListDeleted(ctx *gin.Context) {
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Usuarios eliminados listados exitosamente", usuarios))
 }
+
+// ActualizarIdiomasUsuario actualiza los idiomas de un usuario
+func (c *UsuarioController) ActualizarIdiomasUsuario(ctx *gin.Context) {
+	// Parsear ID de la URL
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	// Parsear request
+	var request struct {
+		IdiomasIDs []int `json:"idiomas_ids" validate:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+		return
+	}
+
+	// Validar datos
+	if err := utils.ValidateStruct(request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	// Actualizar idiomas del usuario
+	err = c.usuarioService.ActualizarIdiomasUsuario(id, request.IdiomasIDs)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al actualizar idiomas del usuario", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Idiomas del usuario actualizados exitosamente", nil))
+}
+
+// GetIdiomasUsuario obtiene los idiomas de un usuario
+func (c *UsuarioController) GetIdiomasUsuario(ctx *gin.Context) {
+	// Parsear ID de la URL
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	// Obtener idiomas del usuario
+	idiomas, err := c.usuarioService.GetIdiomasByUsuarioID(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener idiomas del usuario", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Idiomas del usuario obtenidos", idiomas))
+}

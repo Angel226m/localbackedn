@@ -9,13 +9,18 @@ import (
 
 // UsuarioService maneja la lógica de negocio para usuarios
 type UsuarioService struct {
-	usuarioRepo *repositorios.UsuarioRepository
+	usuarioRepo       *repositorios.UsuarioRepository
+	usuarioIdiomaRepo *repositorios.UsuarioIdiomaRepository
 }
 
 // NewUsuarioService crea una nueva instancia de UsuarioService
-func NewUsuarioService(usuarioRepo *repositorios.UsuarioRepository) *UsuarioService {
+func NewUsuarioService(
+	usuarioRepo *repositorios.UsuarioRepository,
+	usuarioIdiomaRepo *repositorios.UsuarioIdiomaRepository,
+) *UsuarioService {
 	return &UsuarioService{
-		usuarioRepo: usuarioRepo,
+		usuarioRepo:       usuarioRepo,
+		usuarioIdiomaRepo: usuarioIdiomaRepo,
 	}
 }
 
@@ -40,7 +45,12 @@ func (s *UsuarioService) Create(usuario *entidades.NuevoUsuarioRequest) (int, er
 	}
 
 	// Crear usuario
-	return s.usuarioRepo.Create(usuario, hashedPassword)
+	id, err := s.usuarioRepo.Create(usuario, hashedPassword)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 // GetByID obtiene un usuario por su ID
@@ -109,4 +119,27 @@ func (s *UsuarioService) List() ([]*entidades.Usuario, error) {
 // ListDeleted lista todos los usuarios eliminados
 func (s *UsuarioService) ListDeleted() ([]*entidades.Usuario, error) {
 	return s.usuarioRepo.ListDeleted()
+}
+
+// ActualizarIdiomasUsuario actualiza los idiomas de un usuario
+func (s *UsuarioService) ActualizarIdiomasUsuario(usuarioID int, idiomasIDs []int) error {
+	// Verificar que el usuario existe
+	_, err := s.usuarioRepo.GetByID(usuarioID)
+	if err != nil {
+		return err
+	}
+
+	// Actualizar idiomas
+	return s.usuarioIdiomaRepo.ActualizarIdiomasUsuario(usuarioID, idiomasIDs)
+}
+
+// GetIdiomasByUsuarioID obtiene todos los idiomas de un usuario
+func (s *UsuarioService) GetIdiomasByUsuarioID(usuarioID int) ([]*entidades.UsuarioIdioma, error) {
+	// Verificar que el usuario existe
+	_, err := s.usuarioRepo.GetByID(usuarioID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.usuarioIdiomaRepo.GetByUsuarioID(usuarioID)
 }

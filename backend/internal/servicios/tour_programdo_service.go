@@ -13,7 +13,8 @@ type TourProgramadoService struct {
 	tipoTourRepo       *repositorios.TipoTourRepository
 	embarcacionRepo    *repositorios.EmbarcacionRepository
 	horarioTourRepo    *repositorios.HorarioTourRepository
-	sedeRepo           *repositorios.SedeRepository // Agregar repositorio de sede
+	sedeRepo           *repositorios.SedeRepository
+	usuarioRepo        *repositorios.UsuarioRepository // Repositorio para validar choferes
 }
 
 // NewTourProgramadoService crea una nueva instancia de TourProgramadoService
@@ -22,14 +23,16 @@ func NewTourProgramadoService(
 	tipoTourRepo *repositorios.TipoTourRepository,
 	embarcacionRepo *repositorios.EmbarcacionRepository,
 	horarioTourRepo *repositorios.HorarioTourRepository,
-	sedeRepo *repositorios.SedeRepository, // Agregar parámetro
+	sedeRepo *repositorios.SedeRepository,
+	usuarioRepo *repositorios.UsuarioRepository,
 ) *TourProgramadoService {
 	return &TourProgramadoService{
 		tourProgramadoRepo: tourProgramadoRepo,
 		tipoTourRepo:       tipoTourRepo,
 		embarcacionRepo:    embarcacionRepo,
 		horarioTourRepo:    horarioTourRepo,
-		sedeRepo:           sedeRepo, // Asignar el repositorio
+		sedeRepo:           sedeRepo,
+		usuarioRepo:        usuarioRepo,
 	}
 }
 
@@ -54,9 +57,20 @@ func (s *TourProgramadoService) Create(tour *entidades.NuevoTourProgramadoReques
 	}
 
 	// Verificar que la sede exista
-	_, err = s.sedeRepo.GetByID(tour.IDSede) // Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(tour.IDSede)
 	if err != nil {
 		return 0, errors.New("la sede especificada no existe")
+	}
+
+	// Verificar que el chofer exista y tenga rol de CHOFER si se proporciona
+	if tour.IDChofer != nil {
+		usuario, err := s.usuarioRepo.GetByID(*tour.IDChofer)
+		if err != nil {
+			return 0, errors.New("el chofer especificado no existe")
+		}
+		if usuario.Rol != "CHOFER" {
+			return 0, errors.New("el usuario especificado no tiene rol de CHOFER")
+		}
 	}
 
 	// Verificar que el horario corresponde al tipo de tour
@@ -139,9 +153,20 @@ func (s *TourProgramadoService) Update(id int, tour *entidades.ActualizarTourPro
 	}
 
 	// Verificar que la sede exista
-	_, err = s.sedeRepo.GetByID(tour.IDSede) // Verificar que la sede exista
+	_, err = s.sedeRepo.GetByID(tour.IDSede)
 	if err != nil {
 		return errors.New("la sede especificada no existe")
+	}
+
+	// Verificar que el chofer exista y tenga rol de CHOFER si se proporciona
+	if tour.IDChofer != nil {
+		usuario, err := s.usuarioRepo.GetByID(*tour.IDChofer)
+		if err != nil {
+			return errors.New("el chofer especificado no existe")
+		}
+		if usuario.Rol != "CHOFER" {
+			return errors.New("el usuario especificado no tiene rol de CHOFER")
+		}
 	}
 
 	// Verificar que el horario corresponde al tipo de tour
@@ -276,7 +301,7 @@ func (s *TourProgramadoService) LiberarCupo(id int, cantidad int) error {
 	return s.tourProgramadoRepo.UpdateCupoDisponible(id, nuevoCupo)
 }
 
-// Delete elimina un tour programado
+// Delete elimina un tour programado (CORREGIDO - usa SoftDelete)
 func (s *TourProgramadoService) Delete(id int) error {
 	// Verificar que el tour programado existe
 	existingTour, err := s.tourProgramadoRepo.GetByID(id)
@@ -289,8 +314,8 @@ func (s *TourProgramadoService) Delete(id int) error {
 		return errors.New("no se puede eliminar un tour que ya tiene reservas, solo se puede cancelar")
 	}
 
-	// Eliminar tour programado
-	return s.tourProgramadoRepo.Delete(id)
+	// Eliminar tour programado (usando SoftDelete en lugar de Delete)
+	return s.tourProgramadoRepo.SoftDelete(id)
 }
 
 // List lista todos los tours programados
@@ -337,6 +362,15 @@ func (s *TourProgramadoService) ListByEmbarcacion(idEmbarcacion int) ([]*entidad
 
 // ListByChofer lista todos los tours programados asociados a un chofer
 func (s *TourProgramadoService) ListByChofer(idChofer int) ([]*entidades.TourProgramado, error) {
+	// Verificar que el chofer exista y tenga rol CHOFER
+	usuario, err := s.usuarioRepo.GetByID(idChofer)
+	if err != nil {
+		return nil, errors.New("el chofer especificado no existe")
+	}
+	if usuario.Rol != "CHOFER" {
+		return nil, errors.New("el usuario especificado no tiene rol de CHOFER")
+	}
+
 	return s.tourProgramadoRepo.ListByChofer(idChofer)
 }
 
@@ -369,7 +403,5 @@ func (s *TourProgramadoService) ListBySede(idSede int) ([]*entidades.TourProgram
 		return nil, errors.New("la sede especificada no existe")
 	}
 
-	// Implementar método en el repositorio o filtrar resultados aquí
-	// Esta es una función que deberás agregar al repositorio
 	return s.tourProgramadoRepo.ListBySede(idSede)
 }

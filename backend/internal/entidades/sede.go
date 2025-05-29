@@ -11,9 +11,10 @@ type Sede struct {
 	Direccion string    `json:"direccion" db:"direccion"`
 	Telefono  string    `json:"telefono" db:"telefono"`
 	Correo    string    `json:"correo" db:"correo"`
-	Ciudad    string    `json:"ciudad" db:"ciudad"`
+	Distrito  string    `json:"distrito" db:"distrito"` // CORREGIDO: era "ciudad"
 	Provincia string    `json:"provincia" db:"provincia"`
 	Pais      string    `json:"pais" db:"pais"`
+	ImageURL  string    `json:"image_url" db:"image_url"` // AGREGADO
 	Eliminado bool      `json:"eliminado" db:"eliminado"`
 	CreatedAt time.Time `json:"created_at,omitempty" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" db:"updated_at"`
@@ -25,9 +26,10 @@ type NuevaSedeRequest struct {
 	Direccion string `json:"direccion" validate:"required"`
 	Telefono  string `json:"telefono"`
 	Correo    string `json:"correo" validate:"omitempty,email"`
-	Ciudad    string `json:"ciudad" validate:"required"`
+	Distrito  string `json:"distrito" validate:"required"` // CORREGIDO
 	Provincia string `json:"provincia"`
 	Pais      string `json:"pais" validate:"required"`
+	ImageURL  string `json:"image_url"` // AGREGADO
 }
 
 // ActualizarSedeRequest representa los datos necesarios para actualizar una sede
@@ -36,7 +38,8 @@ type ActualizarSedeRequest struct {
 	Direccion string `json:"direccion" validate:"required"`
 	Telefono  string `json:"telefono"`
 	Correo    string `json:"correo" validate:"omitempty,email"`
-	Ciudad    string `json:"ciudad" validate:"required"`
+	Distrito  string `json:"distrito" validate:"required"` // CORREGIDO
 	Provincia string `json:"provincia"`
 	Pais      string `json:"pais" validate:"required"`
+	ImageURL  string `json:"image_url"` // AGREGADO
 }

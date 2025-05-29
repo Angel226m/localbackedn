@@ -9,14 +9,20 @@ import (
 // TipoPasajeService maneja la lógica de negocio para tipos de pasaje
 type TipoPasajeService struct {
 	tipoPasajeRepo *repositorios.TipoPasajeRepository
-	sedeRepo       *repositorios.SedeRepository // Añadimos referencia al repositorio de sedes
+	sedeRepo       *repositorios.SedeRepository
+	tipoTourRepo   *repositorios.TipoTourRepository // Añadimos referencia al repositorio de tipos de tour
 }
 
 // NewTipoPasajeService crea una nueva instancia de TipoPasajeService
-func NewTipoPasajeService(tipoPasajeRepo *repositorios.TipoPasajeRepository, sedeRepo *repositorios.SedeRepository) *TipoPasajeService {
+func NewTipoPasajeService(
+	tipoPasajeRepo *repositorios.TipoPasajeRepository,
+	sedeRepo *repositorios.SedeRepository,
+	tipoTourRepo *repositorios.TipoTourRepository,
+) *TipoPasajeService {
 	return &TipoPasajeService{
 		tipoPasajeRepo: tipoPasajeRepo,
 		sedeRepo:       sedeRepo,
+		tipoTourRepo:   tipoTourRepo,
 	}
 }
 
@@ -26,6 +32,12 @@ func (s *TipoPasajeService) Create(tipoPasaje *entidades.NuevoTipoPasajeRequest)
 	_, err := s.sedeRepo.GetByID(tipoPasaje.IDSede)
 	if err != nil {
 		return 0, errors.New("la sede especificada no existe")
+	}
+
+	// Verificar que el tipo de tour existe
+	_, err = s.tipoTourRepo.GetByID(tipoPasaje.IDTipoTour)
+	if err != nil {
+		return 0, errors.New("el tipo de tour especificado no existe")
 	}
 
 	// Verificar si ya existe tipo de pasaje con el mismo nombre en esta sede
@@ -49,6 +61,12 @@ func (s *TipoPasajeService) Update(id int, tipoPasaje *entidades.ActualizarTipoP
 	existing, err := s.tipoPasajeRepo.GetByID(id)
 	if err != nil {
 		return err
+	}
+
+	// Verificar que el tipo de tour existe
+	_, err = s.tipoTourRepo.GetByID(tipoPasaje.IDTipoTour)
+	if err != nil {
+		return errors.New("el tipo de tour especificado no existe")
 	}
 
 	// Verificar si ya existe otro tipo de pasaje con el mismo nombre en la misma sede
@@ -89,4 +107,15 @@ func (s *TipoPasajeService) ListBySede(idSede int) ([]*entidades.TipoPasaje, err
 // List lista todos los tipos de pasaje
 func (s *TipoPasajeService) List() ([]*entidades.TipoPasaje, error) {
 	return s.tipoPasajeRepo.List()
+}
+
+// ListByTipoTour lista todos los tipos de pasaje de un tipo de tour específico
+func (s *TipoPasajeService) ListByTipoTour(idTipoTour int) ([]*entidades.TipoPasaje, error) {
+	// Verificar que el tipo de tour existe
+	_, err := s.tipoTourRepo.GetByID(idTipoTour)
+	if err != nil {
+		return nil, errors.New("el tipo de tour especificado no existe")
+	}
+
+	return s.tipoPasajeRepo.ListByTipoTour(idTipoTour)
 }

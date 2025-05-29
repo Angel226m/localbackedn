@@ -21,13 +21,13 @@ func NewSedeRepository(db *sql.DB) *SedeRepository {
 // GetByID obtiene una sede por su ID
 func (r *SedeRepository) GetByID(id int) (*entidades.Sede, error) {
 	sede := &entidades.Sede{}
-	query := `SELECT id_sede, nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado 
+	query := `SELECT id_sede, nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado 
               FROM sede 
               WHERE id_sede = $1 AND eliminado = false`
 
 	err := r.db.QueryRow(query, id).Scan(
 		&sede.ID, &sede.Nombre, &sede.Direccion, &sede.Telefono,
-		&sede.Correo, &sede.Ciudad, &sede.Provincia, &sede.Pais, &sede.Eliminado,
+		&sede.Correo, &sede.Distrito, &sede.Provincia, &sede.Pais, &sede.ImageURL, &sede.Eliminado,
 	)
 
 	if err != nil {
@@ -43,8 +43,8 @@ func (r *SedeRepository) GetByID(id int) (*entidades.Sede, error) {
 // Create guarda una nueva sede en la base de datos
 func (r *SedeRepository) Create(sede *entidades.NuevaSedeRequest) (int, error) {
 	var id int
-	query := `INSERT INTO sede (nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+	query := `INSERT INTO sede (nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
               RETURNING id_sede`
 
 	err := r.db.QueryRow(
@@ -53,9 +53,10 @@ func (r *SedeRepository) Create(sede *entidades.NuevaSedeRequest) (int, error) {
 		sede.Direccion,
 		sede.Telefono,
 		sede.Correo,
-		sede.Ciudad,
+		sede.Distrito,
 		sede.Provincia,
 		sede.Pais,
+		sede.ImageURL,
 		false, // No eliminado por defecto
 	).Scan(&id)
 
@@ -73,10 +74,11 @@ func (r *SedeRepository) Update(id int, sede *entidades.ActualizarSedeRequest) e
               direccion = $2, 
               telefono = $3, 
               correo = $4, 
-              ciudad = $5, 
+              distrito = $5, 
               provincia = $6, 
-              pais = $7
-              WHERE id_sede = $8 AND eliminado = false`
+              pais = $7,
+              image_url = $8
+              WHERE id_sede = $9 AND eliminado = false`
 
 	result, err := r.db.Exec(
 		query,
@@ -84,9 +86,10 @@ func (r *SedeRepository) Update(id int, sede *entidades.ActualizarSedeRequest) e
 		sede.Direccion,
 		sede.Telefono,
 		sede.Correo,
-		sede.Ciudad,
+		sede.Distrito,
 		sede.Provincia,
 		sede.Pais,
+		sede.ImageURL,
 		id,
 	)
 
@@ -148,7 +151,7 @@ func (r *SedeRepository) Restore(id int) error {
 
 // List lista todas las sedes activas
 func (r *SedeRepository) List() ([]*entidades.Sede, error) {
-	query := `SELECT id_sede, nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado 
+	query := `SELECT id_sede, nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado 
               FROM sede 
               WHERE eliminado = false 
               ORDER BY nombre`
@@ -165,7 +168,7 @@ func (r *SedeRepository) List() ([]*entidades.Sede, error) {
 		sede := &entidades.Sede{}
 		err := rows.Scan(
 			&sede.ID, &sede.Nombre, &sede.Direccion, &sede.Telefono,
-			&sede.Correo, &sede.Ciudad, &sede.Provincia, &sede.Pais, &sede.Eliminado,
+			&sede.Correo, &sede.Distrito, &sede.Provincia, &sede.Pais, &sede.ImageURL, &sede.Eliminado,
 		)
 		if err != nil {
 			return nil, err
@@ -180,14 +183,14 @@ func (r *SedeRepository) List() ([]*entidades.Sede, error) {
 	return sedes, nil
 }
 
-// GetByCiudad obtiene sedes por ciudad
-func (r *SedeRepository) GetByCiudad(ciudad string) ([]*entidades.Sede, error) {
-	query := `SELECT id_sede, nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado 
+// GetByDistrito obtiene sedes por distrito
+func (r *SedeRepository) GetByDistrito(distrito string) ([]*entidades.Sede, error) {
+	query := `SELECT id_sede, nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado 
               FROM sede 
-              WHERE ciudad = $1 AND eliminado = false 
+              WHERE distrito = $1 AND eliminado = false 
               ORDER BY nombre`
 
-	rows, err := r.db.Query(query, ciudad)
+	rows, err := r.db.Query(query, distrito)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +202,7 @@ func (r *SedeRepository) GetByCiudad(ciudad string) ([]*entidades.Sede, error) {
 		sede := &entidades.Sede{}
 		err := rows.Scan(
 			&sede.ID, &sede.Nombre, &sede.Direccion, &sede.Telefono,
-			&sede.Correo, &sede.Ciudad, &sede.Provincia, &sede.Pais, &sede.Eliminado,
+			&sede.Correo, &sede.Distrito, &sede.Provincia, &sede.Pais, &sede.ImageURL, &sede.Eliminado,
 		)
 		if err != nil {
 			return nil, err
@@ -216,10 +219,10 @@ func (r *SedeRepository) GetByCiudad(ciudad string) ([]*entidades.Sede, error) {
 
 // GetByPais obtiene sedes por país
 func (r *SedeRepository) GetByPais(pais string) ([]*entidades.Sede, error) {
-	query := `SELECT id_sede, nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado 
+	query := `SELECT id_sede, nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado 
               FROM sede 
               WHERE pais = $1 AND eliminado = false 
-              ORDER BY ciudad, nombre`
+              ORDER BY distrito, nombre`
 
 	rows, err := r.db.Query(query, pais)
 	if err != nil {
@@ -233,7 +236,7 @@ func (r *SedeRepository) GetByPais(pais string) ([]*entidades.Sede, error) {
 		sede := &entidades.Sede{}
 		err := rows.Scan(
 			&sede.ID, &sede.Nombre, &sede.Direccion, &sede.Telefono,
-			&sede.Correo, &sede.Ciudad, &sede.Provincia, &sede.Pais, &sede.Eliminado,
+			&sede.Correo, &sede.Distrito, &sede.Provincia, &sede.Pais, &sede.ImageURL, &sede.Eliminado,
 		)
 		if err != nil {
 			return nil, err
@@ -251,7 +254,7 @@ func (r *SedeRepository) GetByPais(pais string) ([]*entidades.Sede, error) {
 // GetAll obtiene todas las sedes no eliminadas
 func (r *SedeRepository) GetAll() ([]*entidades.Sede, error) {
 	query := `
-		SELECT id_sede, nombre, direccion, telefono, correo, ciudad, provincia, pais, eliminado
+		SELECT id_sede, nombre, direccion, telefono, correo, distrito, provincia, pais, image_url, eliminado
 		FROM sede
 		WHERE eliminado = false
 		ORDER BY nombre ASC
@@ -272,9 +275,10 @@ func (r *SedeRepository) GetAll() ([]*entidades.Sede, error) {
 			&sede.Direccion,
 			&sede.Telefono,
 			&sede.Correo,
-			&sede.Ciudad,
+			&sede.Distrito,
 			&sede.Provincia,
 			&sede.Pais,
+			&sede.ImageURL,
 			&sede.Eliminado,
 		)
 		if err != nil {

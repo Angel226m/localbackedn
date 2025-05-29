@@ -22,8 +22,7 @@ func NewTipoTourRepository(db *sql.DB) *TipoTourRepository {
 func (r *TipoTourRepository) GetByID(id int) (*entidades.TipoTour, error) {
 	tipoTour := &entidades.TipoTour{}
 	query := `SELECT t.id_tipo_tour, t.id_sede, t.nombre, t.descripcion, 
-              t.duracion_minutos, t.precio_base, t.cantidad_pasajeros, 
-              t.url_imagen, t.eliminado, s.nombre as nombre_sede
+              t.duracion_minutos, t.url_imagen, t.eliminado, s.nombre as nombre_sede
               FROM tipo_tour t
               INNER JOIN sede s ON t.id_sede = s.id_sede
               WHERE t.id_tipo_tour = $1`
@@ -33,8 +32,7 @@ func (r *TipoTourRepository) GetByID(id int) (*entidades.TipoTour, error) {
 
 	err := r.db.QueryRow(query, id).Scan(
 		&tipoTour.ID, &tipoTour.IDSede, &tipoTour.Nombre, &descripcion,
-		&tipoTour.DuracionMinutos, &tipoTour.PrecioBase, &tipoTour.CantidadPasajeros,
-		&urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
+		&tipoTour.DuracionMinutos, &urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
 	)
 
 	if err != nil {
@@ -54,8 +52,7 @@ func (r *TipoTourRepository) GetByID(id int) (*entidades.TipoTour, error) {
 func (r *TipoTourRepository) GetByNombre(nombre string, idSede int) (*entidades.TipoTour, error) {
 	tipoTour := &entidades.TipoTour{}
 	query := `SELECT id_tipo_tour, id_sede, nombre, descripcion, 
-              duracion_minutos, precio_base, cantidad_pasajeros, 
-              url_imagen, eliminado
+              duracion_minutos, url_imagen, eliminado
               FROM tipo_tour
               WHERE nombre = $1 AND id_sede = $2`
 
@@ -64,8 +61,7 @@ func (r *TipoTourRepository) GetByNombre(nombre string, idSede int) (*entidades.
 
 	err := r.db.QueryRow(query, nombre, idSede).Scan(
 		&tipoTour.ID, &tipoTour.IDSede, &tipoTour.Nombre, &descripcion,
-		&tipoTour.DuracionMinutos, &tipoTour.PrecioBase, &tipoTour.CantidadPasajeros,
-		&urlImagen, &tipoTour.Eliminado,
+		&tipoTour.DuracionMinutos, &urlImagen, &tipoTour.Eliminado,
 	)
 
 	if err != nil {
@@ -85,8 +81,8 @@ func (r *TipoTourRepository) GetByNombre(nombre string, idSede int) (*entidades.
 func (r *TipoTourRepository) Create(tipoTour *entidades.NuevoTipoTourRequest) (int, error) {
 	var id int
 	query := `INSERT INTO tipo_tour (id_sede, nombre, descripcion, duracion_minutos, 
-              precio_base, cantidad_pasajeros, url_imagen, eliminado)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+              url_imagen, eliminado)
+              VALUES ($1, $2, $3, $4, $5, false)
               RETURNING id_tipo_tour`
 
 	err := r.db.QueryRow(
@@ -95,8 +91,6 @@ func (r *TipoTourRepository) Create(tipoTour *entidades.NuevoTipoTourRequest) (i
 		tipoTour.Nombre,
 		tipoTour.Descripcion,
 		tipoTour.DuracionMinutos,
-		tipoTour.PrecioBase,
-		tipoTour.CantidadPasajeros,
 		tipoTour.URLImagen,
 	).Scan(&id)
 
@@ -114,11 +108,9 @@ func (r *TipoTourRepository) Update(id int, tipoTour *entidades.ActualizarTipoTo
               nombre = $2,
               descripcion = $3,
               duracion_minutos = $4,
-              precio_base = $5,
-              cantidad_pasajeros = $6,
-              url_imagen = $7,
-              eliminado = $8
-              WHERE id_tipo_tour = $9`
+              url_imagen = $5,
+              eliminado = $6
+              WHERE id_tipo_tour = $7`
 
 	_, err := r.db.Exec(
 		query,
@@ -126,8 +118,6 @@ func (r *TipoTourRepository) Update(id int, tipoTour *entidades.ActualizarTipoTo
 		tipoTour.Nombre,
 		tipoTour.Descripcion,
 		tipoTour.DuracionMinutos,
-		tipoTour.PrecioBase,
-		tipoTour.CantidadPasajeros,
 		tipoTour.URLImagen,
 		tipoTour.Eliminado,
 		id,
@@ -146,8 +136,7 @@ func (r *TipoTourRepository) Delete(id int) error {
 // List lista todos los tipos de tour no eliminados
 func (r *TipoTourRepository) List() ([]*entidades.TipoTour, error) {
 	query := `SELECT t.id_tipo_tour, t.id_sede, t.nombre, t.descripcion, 
-              t.duracion_minutos, t.precio_base, t.cantidad_pasajeros, 
-              t.url_imagen, t.eliminado, s.nombre as nombre_sede
+              t.duracion_minutos, t.url_imagen, t.eliminado, s.nombre as nombre_sede
               FROM tipo_tour t
               INNER JOIN sede s ON t.id_sede = s.id_sede
               WHERE t.eliminado = false
@@ -168,8 +157,7 @@ func (r *TipoTourRepository) List() ([]*entidades.TipoTour, error) {
 
 		err := rows.Scan(
 			&tipoTour.ID, &tipoTour.IDSede, &tipoTour.Nombre, &descripcion,
-			&tipoTour.DuracionMinutos, &tipoTour.PrecioBase, &tipoTour.CantidadPasajeros,
-			&urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
+			&tipoTour.DuracionMinutos, &urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
 		)
 		if err != nil {
 			return nil, err
@@ -190,8 +178,7 @@ func (r *TipoTourRepository) List() ([]*entidades.TipoTour, error) {
 // ListBySede lista todos los tipos de tour de una sede específica
 func (r *TipoTourRepository) ListBySede(idSede int) ([]*entidades.TipoTour, error) {
 	query := `SELECT t.id_tipo_tour, t.id_sede, t.nombre, t.descripcion, 
-              t.duracion_minutos, t.precio_base, t.cantidad_pasajeros, 
-              t.url_imagen, t.eliminado, s.nombre as nombre_sede
+              t.duracion_minutos, t.url_imagen, t.eliminado, s.nombre as nombre_sede
               FROM tipo_tour t
               INNER JOIN sede s ON t.id_sede = s.id_sede
               WHERE t.id_sede = $1 AND t.eliminado = false
@@ -212,8 +199,7 @@ func (r *TipoTourRepository) ListBySede(idSede int) ([]*entidades.TipoTour, erro
 
 		err := rows.Scan(
 			&tipoTour.ID, &tipoTour.IDSede, &tipoTour.Nombre, &descripcion,
-			&tipoTour.DuracionMinutos, &tipoTour.PrecioBase, &tipoTour.CantidadPasajeros,
-			&urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
+			&tipoTour.DuracionMinutos, &urlImagen, &tipoTour.Eliminado, &tipoTour.NombreSede,
 		)
 		if err != nil {
 			return nil, err

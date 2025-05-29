@@ -1,5 +1,4 @@
-/*
-package main
+/*package main
 
 import (
 	"database/sql"
@@ -29,7 +28,6 @@ func main() {
 	}
 
 	// Inicializar router
-	// Inicializar router
 	router := gin.Default()
 
 	// Middleware de recuperación y logging
@@ -38,7 +36,7 @@ func main() {
 
 	// Configurar CORS con más opciones y headers
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowOrigins: []string{"https://localhost:5173", "http://127.0.0.1:5173"},
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{
 			"Origin",
@@ -50,25 +48,11 @@ func main() {
 			"X-CSRF-Token",
 		},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type", "Authorization"},
-		AllowCredentials: true,
+		AllowCredentials: true, // Importante para cookies
 		MaxAge:           12 * time.Hour,
 		AllowWildcard:    true,
 		AllowWebSockets:  true,
 	}))
-
-	// Middleware adicional para CORS
-	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
 
 	// Health check endpoint con más información
 	router.GET("/health", func(c *gin.Context) {
@@ -95,9 +79,13 @@ func main() {
 
 	// Inicializar repositorios
 	usuarioRepo := repositorios.NewUsuarioRepository(db)
+	idiomaRepo := repositorios.NewIdiomaRepository(db)
 	embarcacionRepo := repositorios.NewEmbarcacionRepository(db)
+	usuarioIdiomaRepo := repositorios.NewUsuarioIdiomaRepository(db) // Nuevo repositorio
+
 	sedeRepo := repositorios.NewSedeRepository(db)
 	tipoTourRepo := repositorios.NewTipoTourRepository(db)
+	tipoTourGaleriaRepo := repositorios.NewTipoTourGaleriaRepository(db)
 	horarioTourRepo := repositorios.NewHorarioTourRepository(db)
 	horarioChoferRepo := repositorios.NewHorarioChoferRepository(db)
 	tourProgramadoRepo := repositorios.NewTourProgramadoRepository(db)
@@ -110,25 +98,36 @@ func main() {
 	comprobantePagoRepo := repositorios.NewComprobantePagoRepository(db)
 
 	// Inicializar servicios
-	authService := servicios.NewAuthService(usuarioRepo, cfg)
-	usuarioService := servicios.NewUsuarioService(usuarioRepo)
+	authService := servicios.NewAuthService(usuarioRepo, sedeRepo, cfg)
+	//usuarioService := servicios.NewUsuarioService(usuarioRepo)
+	usuarioService := servicios.NewUsuarioService(usuarioRepo, usuarioIdiomaRepo)                         // Modificado para incluir usuarioIdiomaRepo
+	usuarioIdiomaService := servicios.NewUsuarioIdiomaService(usuarioIdiomaRepo, idiomaRepo, usuarioRepo) // Nuevo servicio
+
+	idiomaService := servicios.NewIdiomaService(idiomaRepo)
 	sedeService := servicios.NewSedeService(sedeRepo)
-	embarcacionService := servicios.NewEmbarcacionService(embarcacionRepo, usuarioRepo)
-	tipoTourService := servicios.NewTipoTourService(tipoTourRepo, sedeRepo)
-	// En main.go, línea 64:
+	embarcacionService := servicios.NewEmbarcacionService(embarcacionRepo, sedeRepo)
+	tipoTourService := servicios.NewTipoTourService(tipoTourRepo, sedeRepo, idiomaRepo)
+	tipoTourGaleriaService := servicios.NewTipoTourGaleriaService(tipoTourGaleriaRepo, tipoTourRepo)
 	horarioTourService := servicios.NewHorarioTourService(horarioTourRepo, tipoTourRepo, sedeRepo)
-	// Inicializar servicios
 	horarioChoferService := servicios.NewHorarioChoferService(horarioChoferRepo, usuarioRepo, sedeRepo)
 
-	// LÍNEA ACTUALIZADA: Se agregó el parámetro sedeRepo al constructor de TourProgramadoService
-	tourProgramadoService := servicios.NewTourProgramadoService(tourProgramadoRepo, tipoTourRepo, embarcacionRepo, horarioTourRepo, sedeRepo)
+	// 🔧 LÍNEA CORREGIDA - Verifica el orden de parámetros en tu constructor TourProgramadoService
+	tourProgramadoService := servicios.NewTourProgramadoService(
+		tourProgramadoRepo,
+		tipoTourRepo,
+		embarcacionRepo,
+		horarioTourRepo,
+		sedeRepo,
+		usuarioRepo, // *repositorios.UsuarioRepository <- FALTA ESTE
+
+	)
 
 	metodoPagoService := servicios.NewMetodoPagoService(metodoPagoRepo, sedeRepo)
 	tipoPasajeService := servicios.NewTipoPasajeService(tipoPasajeRepo, sedeRepo)
 	canalVentaService := servicios.NewCanalVentaService(canalVentaRepo, sedeRepo)
-	clienteService := servicios.NewClienteService(clienteRepo)
+	clienteService := servicios.NewClienteService(clienteRepo, cfg)
 
-	// Actualizado para incluir sedeRepo
+	// Servicios de reserva
 	reservaService := servicios.NewReservaService(
 		db,
 		reservaRepo,
@@ -137,19 +136,24 @@ func main() {
 		canalVentaRepo,
 		tipoPasajeRepo,
 		usuarioRepo,
-		sedeRepo, // Añadido el repositorio de sedes
+		sedeRepo,
 	)
 
+	// Servicios de pago
 	pagoService := servicios.NewPagoService(
 		pagoRepo,
 		reservaRepo,
 		metodoPagoRepo,
 		canalVentaRepo,
+		sedeRepo,
 	)
+
+	// Servicios de comprobante de pago
 	comprobantePagoService := servicios.NewComprobantePagoService(
 		comprobantePagoRepo,
 		reservaRepo,
 		pagoRepo,
+		sedeRepo,
 	)
 
 	// Middleware global para agregar la configuración al contexto
@@ -161,8 +165,11 @@ func main() {
 	// Inicializar controladores
 	authController := controladores.NewAuthController(authService)
 	usuarioController := controladores.NewUsuarioController(usuarioService)
+	idiomaController := controladores.NewIdiomaController(idiomaService)
+	usuarioIdiomaController := controladores.NewUsuarioIdiomaController(usuarioIdiomaService) // Nuevo controlador
 	embarcacionController := controladores.NewEmbarcacionController(embarcacionService)
 	tipoTourController := controladores.NewTipoTourController(tipoTourService)
+	tipoTourGaleriaController := controladores.NewTipoTourGaleriaController(tipoTourGaleriaService)
 	horarioTourController := controladores.NewHorarioTourController(horarioTourService)
 	horarioChoferController := controladores.NewHorarioChoferController(horarioChoferService)
 	tourProgramadoController := controladores.NewTourProgramadoController(tourProgramadoService)
@@ -181,6 +188,8 @@ func main() {
 		cfg,
 		authController,
 		usuarioController,
+		idiomaController,
+		usuarioIdiomaController,
 		embarcacionController,
 		tipoTourController,
 		horarioTourController,
@@ -194,6 +203,7 @@ func main() {
 		pagoController,
 		comprobantePagoController,
 		sedeController,
+		tipoTourGaleriaController,
 	)
 
 	// Iniciar servidor
@@ -265,63 +275,6 @@ func runMigrations(db *sql.DB) error {
 			return fmt.Errorf("error al ejecutar migraciones: %v", err)
 		}
 
-		// Verificar si necesitamos crear datos iniciales básicos
-		var countSedes int
-		err = db.QueryRow("SELECT COUNT(*) FROM sede").Scan(&countSedes)
-		if err != nil {
-			return fmt.Errorf("error al verificar sedes existentes: %v", err)
-		}
-
-		// Si no hay sedes, insertamos una sede principal
-		if countSedes == 0 {
-			log.Println("Insertando sede principal...")
-			_, err = db.Exec(`
-				INSERT INTO sede (nombre, direccion, ciudad, pais)
-				VALUES ('Sede Principal', 'Av. Principal 123', 'Lima', 'Perú')
-			`)
-			if err != nil {
-				return fmt.Errorf("error al insertar sede principal: %v", err)
-			}
-		}
-
-		// Verificar si necesitamos crear un usuario administrador
-		var countAdmins int
-		err = db.QueryRow("SELECT COUNT(*) FROM usuario WHERE rol = 'ADMIN'").Scan(&countAdmins)
-		if err != nil {
-			return fmt.Errorf("error al verificar administradores existentes: %v", err)
-		}
-
-		// Si no hay admins, insertamos uno
-		/*	if countAdmins == 0 {
-			log.Println("Insertando usuario administrador...")
-			_, err = db.Exec(`
-				INSERT INTO usuario (id_sede, nombres, apellidos, correo, telefono, direccion,
-				fecha_nacimiento, rol, nacionalidad, tipo_de_documento, numero_documento, contrasena)
-				VALUES (, 'Admin', 'Sistema', 'admin@sistema-tours.com', '123456789', 'Dirección Admin',
-				'1990-01-01', 'ADMIN', 'Peruana', 'DNI', '12345678', '$2a$10$Lxx1J7M.A/MT6aZuIEwEoeVPnIQnAqDaJTy6cwg/K3ZGxRV7.U9b.')
-			`)
-			if err != nil {
-				return fmt.Errorf("error al insertar usuario administrador: %v", err)
-			}
-		}*/
-/*
-		if countAdmins == 0 {
-			log.Println("Insertando usuario administrador...")
-			_, err = db.Exec(`
-        INSERT INTO usuario (
-            nombres, apellidos, correo, telefono, direccion,
-            fecha_nacimiento, rol, nacionalidad, tipo_de_documento, numero_documento, contrasena
-        )
-        VALUES (
-            'Admin', 'Sistema', 'admin@sistema-tours.com', '123456789', 'Dirección Admin',
-            '1990-01-01', 'ADMIN', 'Peruana', 'DNI', '12345678', '$2a$10$Lxx1J7M.A/MT6aZuIEwEoeVPnIQnAqDaJTy6cwg/K3ZGxRV7.U9b.'
-        )
-    `)
-			if err != nil {
-				return fmt.Errorf("error al insertar usuario administrador: %v", err)
-			}
-		}
-
 		log.Println("Migraciones iniciales completadas")
 	} else {
 		log.Println("Base de datos ya inicializada, saltando migraciones")
@@ -330,6 +283,7 @@ func runMigrations(db *sql.DB) error {
 	return nil
 }
 */
+
 package main
 
 import (
@@ -367,7 +321,6 @@ func main() {
 	router.Use(gin.Logger())
 
 	// Configurar CORS con más opciones y headers
-	// En main.go, actualizar la configuración CORS
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"https://localhost:5173", "http://127.0.0.1:5173"},
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -412,14 +365,20 @@ func main() {
 
 	// Inicializar repositorios
 	usuarioRepo := repositorios.NewUsuarioRepository(db)
+	idiomaRepo := repositorios.NewIdiomaRepository(db)
 	embarcacionRepo := repositorios.NewEmbarcacionRepository(db)
+	usuarioIdiomaRepo := repositorios.NewUsuarioIdiomaRepository(db) // Nuevo repositorio
+
 	sedeRepo := repositorios.NewSedeRepository(db)
 	tipoTourRepo := repositorios.NewTipoTourRepository(db)
+
 	horarioTourRepo := repositorios.NewHorarioTourRepository(db)
 	horarioChoferRepo := repositorios.NewHorarioChoferRepository(db)
 	tourProgramadoRepo := repositorios.NewTourProgramadoRepository(db)
 	metodoPagoRepo := repositorios.NewMetodoPagoRepository(db)
 	tipoPasajeRepo := repositorios.NewTipoPasajeRepository(db)
+	paquetePasajesRepo := repositorios.NewPaquetePasajesRepository(db)
+
 	canalVentaRepo := repositorios.NewCanalVentaRepository(db)
 	clienteRepo := repositorios.NewClienteRepository(db)
 	reservaRepo := repositorios.NewReservaRepository(db)
@@ -428,15 +387,31 @@ func main() {
 
 	// Inicializar servicios
 	authService := servicios.NewAuthService(usuarioRepo, sedeRepo, cfg)
-	usuarioService := servicios.NewUsuarioService(usuarioRepo)
+	//usuarioService := servicios.NewUsuarioService(usuarioRepo)
+	usuarioService := servicios.NewUsuarioService(usuarioRepo, usuarioIdiomaRepo)                         // Modificado para incluir usuarioIdiomaRepo
+	usuarioIdiomaService := servicios.NewUsuarioIdiomaService(usuarioIdiomaRepo, idiomaRepo, usuarioRepo) // Nuevo servicio
+
+	idiomaService := servicios.NewIdiomaService(idiomaRepo)
 	sedeService := servicios.NewSedeService(sedeRepo)
-	embarcacionService := servicios.NewEmbarcacionService(embarcacionRepo, usuarioRepo)
+	embarcacionService := servicios.NewEmbarcacionService(embarcacionRepo, sedeRepo)
 	tipoTourService := servicios.NewTipoTourService(tipoTourRepo, sedeRepo)
+	paquetePasajesService := servicios.NewPaquetePasajesService(paquetePasajesRepo, sedeRepo, tipoTourRepo)
+
 	horarioTourService := servicios.NewHorarioTourService(horarioTourRepo, tipoTourRepo, sedeRepo)
 	horarioChoferService := servicios.NewHorarioChoferService(horarioChoferRepo, usuarioRepo, sedeRepo)
-	tourProgramadoService := servicios.NewTourProgramadoService(tourProgramadoRepo, tipoTourRepo, embarcacionRepo, horarioTourRepo, sedeRepo)
+
+	// 🔧 LÍNEA CORREGIDA - Verifica el orden de parámetros en tu constructor TourProgramadoService
+	tourProgramadoService := servicios.NewTourProgramadoService(
+		tourProgramadoRepo,
+		tipoTourRepo,
+		embarcacionRepo,
+		horarioTourRepo,
+		sedeRepo,
+		usuarioRepo, // *repositorios.UsuarioRepository <- FALTA ESTE
+	)
+
 	metodoPagoService := servicios.NewMetodoPagoService(metodoPagoRepo, sedeRepo)
-	tipoPasajeService := servicios.NewTipoPasajeService(tipoPasajeRepo, sedeRepo)
+	tipoPasajeService := servicios.NewTipoPasajeService(tipoPasajeRepo, sedeRepo, tipoTourRepo)
 	canalVentaService := servicios.NewCanalVentaService(canalVentaRepo, sedeRepo)
 	clienteService := servicios.NewClienteService(clienteRepo, cfg)
 
@@ -452,21 +427,21 @@ func main() {
 		sedeRepo,
 	)
 
-	// Servicios de pago - actualizado para incluir sedeRepo
+	// Servicios de pago
 	pagoService := servicios.NewPagoService(
 		pagoRepo,
 		reservaRepo,
 		metodoPagoRepo,
 		canalVentaRepo,
-		sedeRepo, // Añadido el repositorio de sedes
+		sedeRepo,
 	)
 
-	// Servicios de comprobante de pago - actualizado para incluir sedeRepo
+	// Servicios de comprobante de pago
 	comprobantePagoService := servicios.NewComprobantePagoService(
 		comprobantePagoRepo,
 		reservaRepo,
 		pagoRepo,
-		sedeRepo, // Añadido el repositorio de sedes
+		sedeRepo,
 	)
 
 	// Middleware global para agregar la configuración al contexto
@@ -478,6 +453,8 @@ func main() {
 	// Inicializar controladores
 	authController := controladores.NewAuthController(authService)
 	usuarioController := controladores.NewUsuarioController(usuarioService)
+	idiomaController := controladores.NewIdiomaController(idiomaService)
+	usuarioIdiomaController := controladores.NewUsuarioIdiomaController(usuarioIdiomaService) // Nuevo controlador
 	embarcacionController := controladores.NewEmbarcacionController(embarcacionService)
 	tipoTourController := controladores.NewTipoTourController(tipoTourService)
 	horarioTourController := controladores.NewHorarioTourController(horarioTourService)
@@ -485,6 +462,8 @@ func main() {
 	tourProgramadoController := controladores.NewTourProgramadoController(tourProgramadoService)
 	metodoPagoController := controladores.NewMetodoPagoController(metodoPagoService)
 	tipoPasajeController := controladores.NewTipoPasajeController(tipoPasajeService)
+	paquetePasajesController := controladores.NewPaquetePasajesController(paquetePasajesService)
+
 	canalVentaController := controladores.NewCanalVentaController(canalVentaService)
 	sedeController := controladores.NewSedeController(sedeService)
 	clienteController := controladores.NewClienteController(clienteService, cfg)
@@ -498,12 +477,15 @@ func main() {
 		cfg,
 		authController,
 		usuarioController,
+		idiomaController,
+		usuarioIdiomaController,
 		embarcacionController,
 		tipoTourController,
 		horarioTourController,
 		horarioChoferController,
 		tourProgramadoController,
 		tipoPasajeController,
+		paquetePasajesController, // Nuevo controlador
 		metodoPagoController,
 		canalVentaController,
 		clienteController,

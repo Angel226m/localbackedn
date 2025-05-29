@@ -57,12 +57,12 @@ func (s *SedeService) List() ([]*entidades.Sede, error) {
 	return s.sedeRepo.List()
 }
 
-// GetByCiudad obtiene sedes por ciudad
-func (s *SedeService) GetByCiudad(ciudad string) ([]*entidades.Sede, error) {
-	if ciudad == "" {
-		return nil, errors.New("la ciudad no puede estar vacía")
+// GetByDistrito obtiene sedes por distrito
+func (s *SedeService) GetByDistrito(distrito string) ([]*entidades.Sede, error) {
+	if distrito == "" {
+		return nil, errors.New("el distrito no puede estar vacío")
 	}
-	return s.sedeRepo.GetByCiudad(ciudad)
+	return s.sedeRepo.GetByDistrito(distrito)
 }
 
 // GetByPais obtiene sedes por país

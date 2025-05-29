@@ -155,3 +155,23 @@ func (c *TipoPasajeController) List(ctx *gin.Context) {
 	// Respuesta exitosa
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tipos de pasaje listados exitosamente", tiposPasaje))
 }
+
+// ListByTipoTour lista todos los tipos de pasaje asociados a un tipo de tour específico
+func (c *TipoPasajeController) ListByTipoTour(ctx *gin.Context) {
+	// Parsear ID del tipo de tour de la URL
+	idTipoTour, err := strconv.Atoi(ctx.Param("id_tipo_tour"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tipo de tour inválido", err))
+		return
+	}
+
+	// Listar tipos de pasaje por tipo de tour
+	tiposPasaje, err := c.tipoPasajeService.ListByTipoTour(idTipoTour)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tipos de pasaje", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tipos de pasaje listados exitosamente", tiposPasaje))
+}

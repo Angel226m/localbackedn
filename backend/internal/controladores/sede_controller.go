@@ -156,20 +156,20 @@ func (c *SedeController) List(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Sedes listadas exitosamente", sedes))
 }
 
-// GetByCiudad obtiene sedes por ciudad
-func (c *SedeController) GetByCiudad(ctx *gin.Context) {
-	// Obtener ciudad de la URL
-	ciudad := ctx.Param("ciudad")
+// GetByDistrito obtiene sedes por distrito
+func (c *SedeController) GetByDistrito(ctx *gin.Context) {
+	// Obtener distrito de la URL
+	distrito := ctx.Param("distrito")
 
-	// Listar sedes por ciudad
-	sedes, err := c.sedeService.GetByCiudad(ciudad)
+	// Listar sedes por distrito
+	sedes, err := c.sedeService.GetByDistrito(distrito)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener sedes por ciudad", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener sedes por distrito", err))
 		return
 	}
 
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Sedes obtenidas por ciudad", sedes))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Sedes obtenidas por distrito", sedes))
 }
 
 // GetByPais obtiene sedes por país

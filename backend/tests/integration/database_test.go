@@ -1,2 +1,1 @@
-// Tests de integración con la base de datos
-package tests
+package integration

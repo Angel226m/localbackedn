@@ -136,22 +136,38 @@ func (c *EmbarcacionController) List(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Embarcaciones listadas exitosamente", embarcaciones))
 }
 
-// ListByChofer lista todas las embarcaciones de un chofer específico
-func (c *EmbarcacionController) ListByChofer(ctx *gin.Context) {
-	// Parsear ID del chofer de la URL
-	idChofer, err := strconv.Atoi(ctx.Param("idChofer"))
+// ListBySede lista todas las embarcaciones de una sede específica
+func (c *EmbarcacionController) ListBySede(ctx *gin.Context) {
+	// Parsear ID de la sede de la URL
+	idSede, err := strconv.Atoi(ctx.Param("idSede"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de chofer inválido", err))
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
 		return
 	}
 
-	// Listar embarcaciones del chofer
-	embarcaciones, err := c.embarcacionService.ListByChofer(idChofer)
+	// Listar embarcaciones de la sede
+	embarcaciones, err := c.embarcacionService.ListBySede(idSede)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar embarcaciones del chofer", err))
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar embarcaciones de la sede", err))
 		return
 	}
 
 	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Embarcaciones del chofer listadas exitosamente", embarcaciones))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Embarcaciones de la sede listadas exitosamente", embarcaciones))
+}
+
+// ListByEstado lista todas las embarcaciones por estado
+func (c *EmbarcacionController) ListByEstado(ctx *gin.Context) {
+	// Obtener estado de la URL
+	estado := ctx.Param("estado")
+
+	// Listar embarcaciones por estado
+	embarcaciones, err := c.embarcacionService.ListByEstado(estado)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar embarcaciones por estado", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Embarcaciones por estado listadas exitosamente", embarcaciones))
 }
