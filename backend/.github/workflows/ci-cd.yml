@@ -10,11 +10,13 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
-
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
+
+      - name: Mostrar versión de Go
+        run: go version
 
       - name: Ejecutar tests
         run: go test ./... -v
