@@ -10,16 +10,27 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
+
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21.0'
+          go-version: '1.24'   # importante: solo 1.24, no 1.24.1 ni otra
 
-      - name: Mostrar versión de Go
-        run: go version
+      - name: Verificar versión Go
+        run: go version     # Esto confirma qué versión está usando realmente
 
       - name: Ejecutar tests
         run: go test ./... -v
+
+      - name: Cache de módulos Go
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
   docker:
     needs: test
@@ -31,7 +42,7 @@ jobs:
       - name: Construir imagen Docker
         run: docker build -t sistema-tours .
 
-      # Opcional: Ejecutar contenedor Docker para prueba
+      # Opcional: Ejecutar contenedor en el runner (no recomendado en prod)
       - name: Ejecutar contenedor Docker
         run: |
           docker stop sistema-tours || true
