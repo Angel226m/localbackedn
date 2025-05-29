@@ -1,0 +1,37 @@
+name: Go Test + Build + Docker
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Ejecutar tests
+        run: go test ./... -v
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Construir imagen Docker
+        run: docker build -t sistema-tours .
+
+      # Opcional: Ejecutar contenedor en el runner (NO recomendado para producción)
+      - name: Ejecutar contenedor Docker
+        run: |
+          docker stop sistema-tours || true
+          docker rm sistema-tours || true
+          docker run -d --name sistema-tours -p 8080:8080 sistema-tours
