@@ -102,6 +102,22 @@ CREATE TABLE tipo_tour (
 CREATE INDEX idx_tipo_tour_sede ON tipo_tour(id_sede);
 CREATE INDEX idx_tipo_tour_eliminado ON tipo_tour(eliminado);
 
+-- Tabla para la galería de imágenes de tours
+CREATE TABLE galeria_tour (
+    id_galeria SERIAL PRIMARY KEY,
+    id_tipo_tour INT NOT NULL, -- Nueva relación con tipo_tour
+    url_imagen VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    orden INT DEFAULT 0,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    eliminado BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (id_tipo_tour) REFERENCES tipo_tour(id_tipo_tour) ON UPDATE CASCADE ON DELETE CASCADE
+);
+CREATE INDEX idx_galeria_tour_tipo_tour ON galeria_tour(id_tipo_tour);
+CREATE INDEX idx_galeria_tour_orden ON galeria_tour(orden);
+CREATE INDEX idx_galeria_tour_eliminado ON galeria_tour(eliminado);
+
+
 -- Tabla horario_tour
 CREATE TABLE horario_tour (
     id_horario SERIAL PRIMARY KEY,
@@ -183,6 +199,8 @@ CREATE INDEX idx_tour_programado_fecha ON tour_programado(fecha);
 CREATE INDEX idx_tour_programado_estado ON tour_programado(estado);
 CREATE INDEX idx_tour_programado_eliminado ON tour_programado(eliminado);
 
+
+ 
 -- Tabla metodo_pago
 CREATE TABLE metodo_pago (
     id_metodo_pago SERIAL PRIMARY KEY,

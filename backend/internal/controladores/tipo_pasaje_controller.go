@@ -125,8 +125,8 @@ func (c *TipoPasajeController) Delete(ctx *gin.Context) {
 
 // ListBySede lista todos los tipos de pasaje de una sede específica
 func (c *TipoPasajeController) ListBySede(ctx *gin.Context) {
-	// Parsear ID de sede de la URL
-	idSede, err := strconv.Atoi(ctx.Param("id_sede"))
+	// Parsear ID de sede de la URL - CAMBIAR DE "id_sede" A "idSede"
+	idSede, err := strconv.Atoi(ctx.Param("idSede")) // <-- Cambiado aquí
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
 		return

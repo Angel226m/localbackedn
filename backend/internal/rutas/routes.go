@@ -23,6 +23,8 @@ func SetupRoutes(
 
 	embarcacionController *controladores.EmbarcacionController,
 	tipoTourController *controladores.TipoTourController,
+	galeriaTourController *controladores.GaleriaTourController,
+
 	horarioTourController *controladores.HorarioTourController,
 	horarioChoferController *controladores.HorarioChoferController,
 	tourProgramadoController *controladores.TourProgramadoController,
@@ -68,6 +70,9 @@ func SetupRoutes(
 		// Tipos de pasaje (acceso público para ver precios)
 		public.GET("/tipos-pasaje", tipoPasajeController.List)
 		public.GET("/tipos-pasaje/sede/:idSede", tipoPasajeController.ListBySede)
+
+		public.GET("/tipo-tours/:id_tipo_tour/galerias", galeriaTourController.ListByTipoTour)
+		public.GET("/galerias/:id", galeriaTourController.GetByID)
 
 		// Paquetes de pasajes (acceso público para ver precios y opciones)
 		public.GET("/paquetes-pasajes", paquetePasajesController.List)
@@ -164,6 +169,13 @@ func SetupRoutes(
 			admin.PUT("/tipos-tour/:id", tipoTourController.Update)
 			admin.DELETE("/tipos-tour/:id", tipoTourController.Delete)
 
+			// Gestión de galería de imágenes
+			admin.POST("/galerias", galeriaTourController.Create)
+			admin.GET("/galerias/:id", galeriaTourController.GetByID)
+			admin.PUT("/galerias/:id", galeriaTourController.Update)
+			admin.DELETE("/galerias/:id", galeriaTourController.Delete)
+			admin.GET("/tipo-tours/:id_tipo_tour/galerias", galeriaTourController.ListByTipoTour)
+
 			// Gestión de horarios de tour
 			admin.POST("/horarios-tour", horarioTourController.Create)
 			admin.GET("/horarios-tour", horarioTourController.List)
@@ -204,7 +216,9 @@ func SetupRoutes(
 			admin.GET("/tipos-pasaje/:id", tipoPasajeController.GetByID)
 			admin.PUT("/tipos-pasaje/:id", tipoPasajeController.Update)
 			admin.DELETE("/tipos-pasaje/:id", tipoPasajeController.Delete)
+			//
 			admin.GET("/tipos-pasaje/sede/:idSede", tipoPasajeController.ListBySede)
+			//admin.GET("/tipos-pasaje/sede/:id_sede", tipoPasajeController.ListBySede)
 			admin.GET("/tipos-pasaje/tipo-tour/:id_tipo_tour", tipoPasajeController.ListByTipoTour)
 
 			// Gestión de paquetes de pasajes
@@ -304,6 +318,10 @@ func SetupRoutes(
 			// Ver tipos de tour (solo lectura)
 			vendedor.GET("/tipos-tour", tipoTourController.List)
 			vendedor.GET("/tipos-tour/:id", tipoTourController.GetByID)
+
+			// Ver galería de imágenes (solo lectura)
+			vendedor.GET("/tipo-tours/:id_tipo_tour/galerias", galeriaTourController.ListByTipoTour)
+			vendedor.GET("/galerias/:id", galeriaTourController.GetByID)
 
 			// Ver horarios de tour (solo lectura)
 			vendedor.GET("/horarios-tour", horarioTourController.List)
@@ -470,6 +488,10 @@ func SetupRoutes(
 			cliente.GET("/mis-reservas", reservaController.ListMyReservas)
 			cliente.GET("/reservas/:id", reservaController.GetByID)
 			cliente.POST("/reservas/:id/estado", reservaController.CambiarEstado)
+
+			// Ver galería de imágenes (solo lectura)
+			cliente.GET("/tipo-tours/:id_tipo_tour/galerias", galeriaTourController.ListByTipoTour)
+			cliente.GET("/galerias/:id", galeriaTourController.GetByID)
 
 			// Ver mis pagos
 			cliente.GET("/mis-pagos", func(ctx *gin.Context) {

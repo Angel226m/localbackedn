@@ -11,17 +11,13 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-
-        
-
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.24'   # importante: solo 1.24, no 1.24.1 ni otra
           check-latest: true
 
-
-      - name: Verificar versión Go
+      - name: Verificar versión de Go
         run: go version
 
       - name: Mostrar variables de entorno relevantes
@@ -30,7 +26,7 @@ jobs:
       - name: Ejecutar tests
         run: go test ./... -v
 
-      # Cache comentado para forzar run limpio
+      # Cache desactivado para evitar problemas por ahora
       # - name: Cache de módulos Go
       #   uses: actions/cache@v3
       #   with:
@@ -51,7 +47,7 @@ jobs:
       - name: Construir imagen Docker
         run: docker build -t sistema-tours .
 
-      - name: Ejecutar contenedor Docker
+      - name: Ejecutar contenedor Docker (opcional)
         run: |
           docker stop sistema-tours || true
           docker rm sistema-tours || true
