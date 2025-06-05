@@ -1,60 +1,85 @@
 package entidades
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
-// TourProgramado representa la estructura de un tour programado en el sistema
+// TourProgramado representa un tour programado en el sistema
 type TourProgramado struct {
-	ID             int       `json:"id_tour_programado" db:"id_tour_programado"`
-	IDTipoTour     int       `json:"id_tipo_tour" db:"id_tipo_tour"`
-	IDEmbarcacion  int       `json:"id_embarcacion" db:"id_embarcacion"`
-	IDHorario      int       `json:"id_horario" db:"id_horario"`
-	IDSede         int       `json:"id_sede" db:"id_sede"`
-	IDChofer       *int      `json:"id_chofer,omitempty" db:"id_chofer"`
-	Fecha          time.Time `json:"fecha" db:"fecha"`
-	CupoMaximo     int       `json:"cupo_maximo" db:"cupo_maximo"`
-	CupoDisponible int       `json:"cupo_disponible" db:"cupo_disponible"`
-	Estado         string    `json:"estado" db:"estado"` // PROGRAMADO, COMPLETADO, CANCELADO
-	Eliminado      bool      `json:"eliminado" db:"eliminado"`
+	ID             int            `json:"id_tour_programado"`
+	IDTipoTour     int            `json:"id_tipo_tour"`
+	IDEmbarcacion  int            `json:"id_embarcacion"`
+	IDHorario      int            `json:"id_horario"`
+	IDSede         int            `json:"id_sede"`
+	IDChofer       sql.NullInt64  `json:"id_chofer"`
+	Fecha          time.Time      `json:"fecha"`
+	VigenciaDesde  time.Time      `json:"vigencia_desde"`
+	VigenciaHasta  time.Time      `json:"vigencia_hasta"`
+	CupoMaximo     int            `json:"cupo_maximo"`
+	CupoDisponible int            `json:"cupo_disponible"`
+	Estado         string         `json:"estado"`
+	Eliminado      bool           `json:"eliminado"`
+	EsExcepcion    bool           `json:"es_excepcion"`
+	NotasExcepcion sql.NullString `json:"notas_excepcion"`
 
-	// Campos adicionales para mostrar información relacionada (SIN precio_base)
-	NombreTipoTour       string `json:"nombre_tipo_tour,omitempty" db:"-"`
-	DuracionMinutos      int    `json:"duracion_minutos,omitempty" db:"-"`
-	CantidadPasajeros    int    `json:"cantidad_pasajeros,omitempty" db:"-"`
-	NombreEmbarcacion    string `json:"nombre_embarcacion,omitempty" db:"-"`
-	CapacidadEmbarcacion int    `json:"capacidad_embarcacion,omitempty" db:"-"`
-	NombreChofer         string `json:"nombre_chofer,omitempty" db:"-"`
-	ApellidosChofer      string `json:"apellidos_chofer,omitempty" db:"-"`
-	HoraInicio           string `json:"hora_inicio,omitempty" db:"-"`
-	HoraFin              string `json:"hora_fin,omitempty" db:"-"`
-	NombreSede           string `json:"nombre_sede,omitempty" db:"-"`
+	// Campos adicionales para mostrar información relacionada
+	NombreTipoTour    string `json:"nombre_tipo_tour,omitempty"`
+	NombreEmbarcacion string `json:"nombre_embarcacion,omitempty"`
+	NombreSede        string `json:"nombre_sede,omitempty"`
+	NombreChofer      string `json:"nombre_chofer,omitempty"`
+	HoraInicio        string `json:"hora_inicio,omitempty"`
+	HoraFin           string `json:"hora_fin,omitempty"`
 }
 
-// NuevoTourProgramadoRequest representa los datos necesarios para crear un nuevo tour programado
+// NuevoTourProgramadoRequest representa los datos para crear un nuevo tour programado
 type NuevoTourProgramadoRequest struct {
-	IDTipoTour    int       `json:"id_tipo_tour" validate:"required"`
-	IDEmbarcacion int       `json:"id_embarcacion" validate:"required"`
-	IDHorario     int       `json:"id_horario" validate:"required"`
-	IDSede        int       `json:"id_sede" validate:"required"`
-	IDChofer      *int      `json:"id_chofer,omitempty"`
-	Fecha         time.Time `json:"fecha" validate:"required"`
-	CupoMaximo    int       `json:"cupo_maximo" validate:"required,min=1"`
-	Estado        string    `json:"estado" validate:"omitempty,oneof=PROGRAMADO COMPLETADO CANCELADO"`
+	IDTipoTour     int     `json:"id_tipo_tour" validate:"required"`
+	IDEmbarcacion  int     `json:"id_embarcacion" validate:"required"`
+	IDHorario      int     `json:"id_horario" validate:"required"`
+	IDSede         int     `json:"id_sede" validate:"required"`
+	IDChofer       *int    `json:"id_chofer"`
+	Fecha          string  `json:"fecha" validate:"required"`
+	VigenciaDesde  string  `json:"vigencia_desde" validate:"required"`
+	VigenciaHasta  string  `json:"vigencia_hasta" validate:"required"`
+	CupoMaximo     int     `json:"cupo_maximo" validate:"required,min=1"`
+	EsExcepcion    bool    `json:"es_excepcion"`
+	NotasExcepcion *string `json:"notas_excepcion"`
 }
 
 // ActualizarTourProgramadoRequest representa los datos para actualizar un tour programado
 type ActualizarTourProgramadoRequest struct {
-	IDTipoTour     int       `json:"id_tipo_tour" validate:"required"`
-	IDEmbarcacion  int       `json:"id_embarcacion" validate:"required"`
-	IDHorario      int       `json:"id_horario" validate:"required"`
-	IDSede         int       `json:"id_sede" validate:"required"`
-	IDChofer       *int      `json:"id_chofer,omitempty"`
-	Fecha          time.Time `json:"fecha" validate:"required"`
-	CupoMaximo     int       `json:"cupo_maximo" validate:"required,min=1"`
-	CupoDisponible int       `json:"cupo_disponible" validate:"required,min=0"`
-	Estado         string    `json:"estado" validate:"required,oneof=PROGRAMADO COMPLETADO CANCELADO"`
+	IDTipoTour     int     `json:"id_tipo_tour"`
+	IDEmbarcacion  int     `json:"id_embarcacion"`
+	IDHorario      int     `json:"id_horario"`
+	IDSede         int     `json:"id_sede"`
+	IDChofer       *int    `json:"id_chofer"`
+	Fecha          string  `json:"fecha"`
+	VigenciaDesde  string  `json:"vigencia_desde"`
+	VigenciaHasta  string  `json:"vigencia_hasta"`
+	CupoMaximo     int     `json:"cupo_maximo" validate:"min=1"`
+	CupoDisponible int     `json:"cupo_disponible" validate:"min=0"`
+	Estado         string  `json:"estado" validate:"oneof=PROGRAMADO COMPLETADO CANCELADO EN_CURSO"`
+	EsExcepcion    bool    `json:"es_excepcion"`
+	NotasExcepcion *string `json:"notas_excepcion"`
 }
 
-// CambiarEstadoTourRequest representa los datos para cambiar el estado de un tour programado
-type CambiarEstadoTourRequest struct {
-	Estado string `json:"estado" validate:"required,oneof=PROGRAMADO COMPLETADO CANCELADO"`
+// AsignarChoferRequest representa los datos para asignar un chofer a un tour programado
+type AsignarChoferRequest struct {
+	IDChofer int `json:"id_chofer" validate:"required"`
+}
+
+// FiltrosTourProgramado representa los filtros para buscar tours programados
+type FiltrosTourProgramado struct {
+	IDSede           *int    `json:"id_sede"`
+	IDTipoTour       *int    `json:"id_tipo_tour"`
+	FechaInicio      *string `json:"fecha_inicio"`
+	FechaFin         *string `json:"fecha_fin"`
+	VigenciaDesdeIni *string `json:"vigencia_desde_ini"`
+	VigenciaDesdefin *string `json:"vigencia_desde_fin"`
+	VigenciaHastaIni *string `json:"vigencia_hasta_ini"`
+	VigenciaHastaFin *string `json:"vigencia_hasta_fin"`
+	Estado           *string `json:"estado"`
+	IDChofer         *int    `json:"id_chofer"`
+	IDEmbarcacion    *int    `json:"id_embarcacion"`
 }

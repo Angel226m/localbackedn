@@ -90,6 +90,7 @@ func main() {
 	horarioTourRepo := repositorios.NewHorarioTourRepository(db)
 	horarioChoferRepo := repositorios.NewHorarioChoferRepository(db)
 	tourProgramadoRepo := repositorios.NewTourProgramadoRepository(db)
+
 	metodoPagoRepo := repositorios.NewMetodoPagoRepository(db)
 	tipoPasajeRepo := repositorios.NewTipoPasajeRepository(db)
 	paquetePasajesRepo := repositorios.NewPaquetePasajesRepository(db)
@@ -99,6 +100,7 @@ func main() {
 	reservaRepo := repositorios.NewReservaRepository(db)
 	pagoRepo := repositorios.NewPagoRepository(db)
 	comprobantePagoRepo := repositorios.NewComprobantePagoRepository(db)
+	instanciaTourRepo := repositorios.NewInstanciaTourRepository(db)
 
 	// Inicializar servicios
 	authService := servicios.NewAuthService(usuarioRepo, sedeRepo, cfg)
@@ -133,7 +135,7 @@ func main() {
 	clienteService := servicios.NewClienteService(clienteRepo, cfg)
 
 	// Servicios de reserva
-	reservaService := servicios.NewReservaService(
+	/*reservaService := servicios.NewReservaService(
 		db,
 		reservaRepo,
 		clienteRepo,
@@ -143,7 +145,7 @@ func main() {
 		usuarioRepo,
 		sedeRepo,
 	)
-
+	*/
 	// Servicios de pago
 	pagoService := servicios.NewPagoService(
 		pagoRepo,
@@ -160,6 +162,7 @@ func main() {
 		pagoRepo,
 		sedeRepo,
 	)
+	instanciaTourService := servicios.NewInstanciaTourService(instanciaTourRepo)
 
 	// Middleware global para agregar la configuración al contexto
 	router.Use(func(c *gin.Context) {
@@ -186,9 +189,10 @@ func main() {
 	canalVentaController := controladores.NewCanalVentaController(canalVentaService)
 	sedeController := controladores.NewSedeController(sedeService)
 	clienteController := controladores.NewClienteController(clienteService, cfg)
-	reservaController := controladores.NewReservaController(reservaService)
+	/*reservaController := controladores.NewReservaController(reservaService)*/
 	pagoController := controladores.NewPagoController(pagoService)
 	comprobantePagoController := controladores.NewComprobantePagoController(comprobantePagoService)
+	instanciaTourController := controladores.NewInstanciaTourController(instanciaTourService)
 
 	// Configurar rutas
 	rutas.SetupRoutes(
@@ -210,10 +214,12 @@ func main() {
 		metodoPagoController,
 		canalVentaController,
 		clienteController,
-		reservaController,
+		/*	reservaController,*/
 		pagoController,
 		comprobantePagoController,
 		sedeController,
+		instanciaTourController, // Agregar el nuevo controlador aquí
+
 	)
 
 	// Iniciar servidor

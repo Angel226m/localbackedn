@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-// TourProgramadoService maneja la lógica de negocio para tours programados
+// TourProgramadoService maneja la lógica de negocio de los tours programados
 type TourProgramadoService struct {
-	tourProgramadoRepo *repositorios.TourProgramadoRepository
-	tipoTourRepo       *repositorios.TipoTourRepository
-	embarcacionRepo    *repositorios.EmbarcacionRepository
-	horarioTourRepo    *repositorios.HorarioTourRepository
-	sedeRepo           *repositorios.SedeRepository
-	usuarioRepo        *repositorios.UsuarioRepository // Repositorio para validar choferes
+	repo            *repositorios.TourProgramadoRepository
+	tipoTourRepo    *repositorios.TipoTourRepository
+	embarcacionRepo *repositorios.EmbarcacionRepository
+	horarioTourRepo *repositorios.HorarioTourRepository
+	sedeRepo        *repositorios.SedeRepository
+	usuarioRepo     *repositorios.UsuarioRepository
 }
 
-// NewTourProgramadoService crea una nueva instancia de TourProgramadoService
+// NewTourProgramadoService crea una nueva instancia del servicio
 func NewTourProgramadoService(
-	tourProgramadoRepo *repositorios.TourProgramadoRepository,
+	repo *repositorios.TourProgramadoRepository,
 	tipoTourRepo *repositorios.TipoTourRepository,
 	embarcacionRepo *repositorios.EmbarcacionRepository,
 	horarioTourRepo *repositorios.HorarioTourRepository,
@@ -27,381 +27,525 @@ func NewTourProgramadoService(
 	usuarioRepo *repositorios.UsuarioRepository,
 ) *TourProgramadoService {
 	return &TourProgramadoService{
-		tourProgramadoRepo: tourProgramadoRepo,
-		tipoTourRepo:       tipoTourRepo,
-		embarcacionRepo:    embarcacionRepo,
-		horarioTourRepo:    horarioTourRepo,
-		sedeRepo:           sedeRepo,
-		usuarioRepo:        usuarioRepo,
+		repo:            repo,
+		tipoTourRepo:    tipoTourRepo,
+		embarcacionRepo: embarcacionRepo,
+		horarioTourRepo: horarioTourRepo,
+		sedeRepo:        sedeRepo,
+		usuarioRepo:     usuarioRepo,
 	}
-}
-
-// Create crea un nuevo tour programado
-func (s *TourProgramadoService) Create(tour *entidades.NuevoTourProgramadoRequest) (int, error) {
-	// Verificar que el tipo de tour exista
-	_, err := s.tipoTourRepo.GetByID(tour.IDTipoTour)
-	if err != nil {
-		return 0, errors.New("el tipo de tour especificado no existe")
-	}
-
-	// Verificar que la embarcación exista
-	_, err = s.embarcacionRepo.GetByID(tour.IDEmbarcacion)
-	if err != nil {
-		return 0, errors.New("la embarcación especificada no existe")
-	}
-
-	// Verificar que el horario de tour exista
-	horario, err := s.horarioTourRepo.GetByID(tour.IDHorario)
-	if err != nil {
-		return 0, errors.New("el horario de tour especificado no existe")
-	}
-
-	// Verificar que la sede exista
-	_, err = s.sedeRepo.GetByID(tour.IDSede)
-	if err != nil {
-		return 0, errors.New("la sede especificada no existe")
-	}
-
-	// Verificar que el chofer exista y tenga rol de CHOFER si se proporciona
-	if tour.IDChofer != nil {
-		usuario, err := s.usuarioRepo.GetByID(*tour.IDChofer)
-		if err != nil {
-			return 0, errors.New("el chofer especificado no existe")
-		}
-		if usuario.Rol != "CHOFER" {
-			return 0, errors.New("el usuario especificado no tiene rol de CHOFER")
-		}
-	}
-
-	// Verificar que el horario corresponde al tipo de tour
-	if horario.IDTipoTour != tour.IDTipoTour {
-		return 0, errors.New("el horario especificado no corresponde al tipo de tour")
-	}
-
-	// Verificar que la fecha no sea anterior a la fecha actual
-	if tour.Fecha.Before(time.Now().Truncate(24 * time.Hour)) {
-		return 0, errors.New("no se puede programar un tour para una fecha pasada")
-	}
-
-	// Obtener el día de la semana de la fecha (0 = domingo, 1 = lunes, ..., 6 = sábado)
-	diaSemana := int(tour.Fecha.Weekday())
-	if diaSemana == 0 {
-		diaSemana = 7 // Ajustar para que domingo sea 7 en lugar de 0
-	}
-
-	// Verificar disponibilidad del horario para ese día de la semana
-	disponible := false
-	switch diaSemana {
-	case 1:
-		disponible = horario.DisponibleLunes
-	case 2:
-		disponible = horario.DisponibleMartes
-	case 3:
-		disponible = horario.DisponibleMiercoles
-	case 4:
-		disponible = horario.DisponibleJueves
-	case 5:
-		disponible = horario.DisponibleViernes
-	case 6:
-		disponible = horario.DisponibleSabado
-	case 7:
-		disponible = horario.DisponibleDomingo
-	}
-
-	if !disponible {
-		return 0, errors.New("el horario no está disponible para el día de la semana seleccionado")
-	}
-
-	// Crear tour programado
-	return s.tourProgramadoRepo.Create(tour)
 }
 
 // GetByID obtiene un tour programado por su ID
 func (s *TourProgramadoService) GetByID(id int) (*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.GetByID(id)
+	return s.repo.GetByID(id)
+}
+
+// Create crea un nuevo tour programado
+func (s *TourProgramadoService) Create(tourProgramado *entidades.NuevoTourProgramadoRequest) (int, error) {
+	// Validar que existan las entidades relacionadas
+	_, err := s.tipoTourRepo.GetByID(tourProgramado.IDTipoTour)
+	if err != nil {
+		return 0, errors.New("tipo de tour no encontrado")
+	}
+
+	_, err = s.embarcacionRepo.GetByID(tourProgramado.IDEmbarcacion)
+	if err != nil {
+		return 0, errors.New("embarcación no encontrada")
+	}
+
+	_, err = s.horarioTourRepo.GetByID(tourProgramado.IDHorario)
+	if err != nil {
+		return 0, errors.New("horario no encontrado")
+	}
+
+	_, err = s.sedeRepo.GetByID(tourProgramado.IDSede)
+	if err != nil {
+		return 0, errors.New("sede no encontrada")
+	}
+
+	// Validar el chofer si se proporciona
+	if tourProgramado.IDChofer != nil {
+		usuario, err := s.usuarioRepo.GetByID(*tourProgramado.IDChofer)
+		if err != nil {
+			return 0, errors.New("chofer no encontrado")
+		}
+		if usuario.Rol != "CHOFER" {
+			return 0, errors.New("el usuario seleccionado no tiene rol de chofer")
+		}
+	}
+
+	// Validar que la fecha no sea anterior a la fecha actual
+	fechaTour, err := time.Parse("2006-01-02", tourProgramado.Fecha)
+	if err != nil {
+		return 0, errors.New("formato de fecha inválido, debe ser YYYY-MM-DD")
+	}
+
+	fechaActual := time.Now().Truncate(24 * time.Hour) // Elimina las horas, minutos, segundos
+	if fechaTour.Before(fechaActual) {
+		return 0, errors.New("no se pueden crear tours programados con fechas pasadas")
+	}
+
+	// Validar fechas de vigencia
+	vigenciaDesde, err := time.Parse("2006-01-02", tourProgramado.VigenciaDesde)
+	if err != nil {
+		return 0, errors.New("formato de vigencia desde inválido, debe ser YYYY-MM-DD")
+	}
+
+	vigenciaHasta, err := time.Parse("2006-01-02", tourProgramado.VigenciaHasta)
+	if err != nil {
+		return 0, errors.New("formato de vigencia hasta inválido, debe ser YYYY-MM-DD")
+	}
+
+	// Verificar que la vigencia sea coherente
+	if vigenciaHasta.Before(vigenciaDesde) {
+		return 0, errors.New("la fecha de vigencia hasta debe ser posterior a la fecha de vigencia desde")
+	}
+
+	// Verificar que la fecha del tour esté dentro del rango de vigencia
+	if fechaTour.Before(vigenciaDesde) || fechaTour.After(vigenciaHasta) {
+		return 0, errors.New("la fecha del tour debe estar dentro del período de vigencia")
+	}
+
+	// Verificar que la vigencia desde no sea posterior a la fecha del tour
+	if vigenciaDesde.After(fechaTour) {
+		return 0, errors.New("la fecha de vigencia desde no puede ser posterior a la fecha del tour")
+	}
+
+	// Verificar compatibilidad con el horario seleccionado
+	horario, err := s.horarioTourRepo.GetByID(tourProgramado.IDHorario)
+	if err != nil {
+		return 0, errors.New("error al verificar el horario: " + err.Error())
+	}
+
+	// Verificar que el día de la semana del tour coincida con los días disponibles en el horario
+	diaSemana := fechaTour.Weekday()
+	diaDisponible := false
+
+	switch diaSemana {
+	case 0: // Domingo
+		diaDisponible = horario.DisponibleDomingo
+	case 1: // Lunes
+		diaDisponible = horario.DisponibleLunes
+	case 2: // Martes
+		diaDisponible = horario.DisponibleMartes
+	case 3: // Miércoles
+		diaDisponible = horario.DisponibleMiercoles
+	case 4: // Jueves
+		diaDisponible = horario.DisponibleJueves
+	case 5: // Viernes
+		diaDisponible = horario.DisponibleViernes
+	case 6: // Sábado
+		diaDisponible = horario.DisponibleSabado
+	}
+
+	if !diaDisponible {
+		return 0, errors.New("el día seleccionado no está disponible en el horario configurado")
+	}
+
+	return s.repo.Create(tourProgramado)
 }
 
 // Update actualiza un tour programado existente
-func (s *TourProgramadoService) Update(id int, tour *entidades.ActualizarTourProgramadoRequest) error {
-	// Verificar que el tour programado existe
-	existingTour, err := s.tourProgramadoRepo.GetByID(id)
+func (s *TourProgramadoService) Update(id int, tourProgramado *entidades.ActualizarTourProgramadoRequest) error {
+	// Obtener el tour actual para validaciones
+	tourActual, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	// Verificar que no tenga reservas antes de permitir cambios
-	if existingTour.CupoMaximo != existingTour.CupoDisponible && existingTour.CupoDisponible != tour.CupoDisponible {
-		return errors.New("no se puede modificar un tour que ya tiene reservas, solo se puede cancelar")
-	}
-
-	// Verificar que el tipo de tour exista
-	_, err = s.tipoTourRepo.GetByID(tour.IDTipoTour)
-	if err != nil {
-		return errors.New("el tipo de tour especificado no existe")
-	}
-
-	// Verificar que la embarcación exista
-	_, err = s.embarcacionRepo.GetByID(tour.IDEmbarcacion)
-	if err != nil {
-		return errors.New("la embarcación especificada no existe")
-	}
-
-	// Verificar que el horario de tour exista
-	horario, err := s.horarioTourRepo.GetByID(tour.IDHorario)
-	if err != nil {
-		return errors.New("el horario de tour especificado no existe")
-	}
-
-	// Verificar que la sede exista
-	_, err = s.sedeRepo.GetByID(tour.IDSede)
-	if err != nil {
-		return errors.New("la sede especificada no existe")
-	}
-
-	// Verificar que el chofer exista y tenga rol de CHOFER si se proporciona
-	if tour.IDChofer != nil {
-		usuario, err := s.usuarioRepo.GetByID(*tour.IDChofer)
+	// Validar las entidades relacionadas si se proporcionan
+	if tourProgramado.IDTipoTour > 0 {
+		_, err := s.tipoTourRepo.GetByID(tourProgramado.IDTipoTour)
 		if err != nil {
-			return errors.New("el chofer especificado no existe")
+			return errors.New("tipo de tour no encontrado")
+		}
+	}
+
+	if tourProgramado.IDEmbarcacion > 0 {
+		_, err := s.embarcacionRepo.GetByID(tourProgramado.IDEmbarcacion)
+		if err != nil {
+			return errors.New("embarcación no encontrada")
+		}
+	}
+
+	if tourProgramado.IDHorario > 0 {
+		_, err := s.horarioTourRepo.GetByID(tourProgramado.IDHorario)
+		if err != nil {
+			return errors.New("horario no encontrado")
+		}
+	}
+
+	if tourProgramado.IDSede > 0 {
+		_, err := s.sedeRepo.GetByID(tourProgramado.IDSede)
+		if err != nil {
+			return errors.New("sede no encontrada")
+		}
+	}
+
+	// Validar el chofer si se proporciona
+	if tourProgramado.IDChofer != nil {
+		usuario, err := s.usuarioRepo.GetByID(*tourProgramado.IDChofer)
+		if err != nil {
+			return errors.New("chofer no encontrado")
 		}
 		if usuario.Rol != "CHOFER" {
-			return errors.New("el usuario especificado no tiene rol de CHOFER")
+			return errors.New("el usuario seleccionado no tiene rol de chofer")
 		}
 	}
 
-	// Verificar que el horario corresponde al tipo de tour
-	if horario.IDTipoTour != tour.IDTipoTour {
-		return errors.New("el horario especificado no corresponde al tipo de tour")
-	}
-
-	// Verificar que la fecha no sea anterior a la fecha actual
-	if tour.Fecha.Before(time.Now().Truncate(24 * time.Hour)) {
-		return errors.New("no se puede programar un tour para una fecha pasada")
-	}
-
-	// Obtener el día de la semana de la fecha (0 = domingo, 1 = lunes, ..., 6 = sábado)
-	diaSemana := int(tour.Fecha.Weekday())
-	if diaSemana == 0 {
-		diaSemana = 7 // Ajustar para que domingo sea 7 en lugar de 0
-	}
-
-	// Verificar disponibilidad del horario para ese día de la semana
-	disponible := false
-	switch diaSemana {
-	case 1:
-		disponible = horario.DisponibleLunes
-	case 2:
-		disponible = horario.DisponibleMartes
-	case 3:
-		disponible = horario.DisponibleMiercoles
-	case 4:
-		disponible = horario.DisponibleJueves
-	case 5:
-		disponible = horario.DisponibleViernes
-	case 6:
-		disponible = horario.DisponibleSabado
-	case 7:
-		disponible = horario.DisponibleDomingo
-	}
-
-	if !disponible {
-		return errors.New("el horario no está disponible para el día de la semana seleccionado")
-	}
-
-	// Verificar cupo máximo y disponible
-	if tour.CupoDisponible > tour.CupoMaximo {
+	// Validar que el cupo disponible no sea mayor que el cupo máximo
+	if tourProgramado.CupoDisponible > tourProgramado.CupoMaximo && tourProgramado.CupoMaximo > 0 {
 		return errors.New("el cupo disponible no puede ser mayor que el cupo máximo")
 	}
 
-	// Actualizar tour programado
-	return s.tourProgramadoRepo.Update(id, tour)
+	// Variables para validación de fechas
+	var fechaTour time.Time
+	var vigenciaDesde, vigenciaHasta time.Time
+	var errFecha, errVigenciaDesde, errVigenciaHasta error
+
+	// Parsear fechas proporcionadas o usar las existentes
+	if tourProgramado.Fecha != "" {
+		fechaTour, errFecha = time.Parse("2006-01-02", tourProgramado.Fecha)
+		if errFecha != nil {
+			return errors.New("formato de fecha inválido, debe ser YYYY-MM-DD")
+		}
+	} else {
+		fechaTour = tourActual.Fecha
+	}
+
+	if tourProgramado.VigenciaDesde != "" {
+		vigenciaDesde, errVigenciaDesde = time.Parse("2006-01-02", tourProgramado.VigenciaDesde)
+		if errVigenciaDesde != nil {
+			return errors.New("formato de vigencia desde inválido, debe ser YYYY-MM-DD")
+		}
+	} else {
+		vigenciaDesde = tourActual.VigenciaDesde
+	}
+
+	if tourProgramado.VigenciaHasta != "" {
+		vigenciaHasta, errVigenciaHasta = time.Parse("2006-01-02", tourProgramado.VigenciaHasta)
+		if errVigenciaHasta != nil {
+			return errors.New("formato de vigencia hasta inválido, debe ser YYYY-MM-DD")
+		}
+	} else {
+		vigenciaHasta = tourActual.VigenciaHasta
+	}
+
+	// Validar que las fechas sean coherentes
+	fechaActual := time.Now().Truncate(24 * time.Hour)
+
+	if tourProgramado.Fecha != "" && fechaTour.Before(fechaActual) {
+		return errors.New("no se pueden programar tours para fechas pasadas")
+	}
+
+	if vigenciaHasta.Before(vigenciaDesde) {
+		return errors.New("la fecha de vigencia hasta debe ser posterior a la fecha de vigencia desde")
+	}
+
+	// Verificar que la fecha del tour esté dentro del rango de vigencia
+	if fechaTour.Before(vigenciaDesde) || fechaTour.After(vigenciaHasta) {
+		return errors.New("la fecha del tour debe estar dentro del período de vigencia")
+	}
+
+	// Verificar compatibilidad con el horario seleccionado si cambia la fecha o el horario
+	var horarioID int
+	if tourProgramado.IDHorario > 0 {
+		horarioID = tourProgramado.IDHorario
+	} else {
+		horarioID = tourActual.IDHorario
+	}
+
+	if tourProgramado.Fecha != "" || tourProgramado.IDHorario > 0 {
+		horario, err := s.horarioTourRepo.GetByID(horarioID)
+		if err != nil {
+			return errors.New("error al verificar el horario: " + err.Error())
+		}
+
+		// Verificar que el día de la semana del tour coincida con los días disponibles en el horario
+		diaSemana := fechaTour.Weekday()
+		diaDisponible := false
+
+		switch diaSemana {
+		case 0: // Domingo
+			diaDisponible = horario.DisponibleDomingo
+		case 1: // Lunes
+			diaDisponible = horario.DisponibleLunes
+		case 2: // Martes
+			diaDisponible = horario.DisponibleMartes
+		case 3: // Miércoles
+			diaDisponible = horario.DisponibleMiercoles
+		case 4: // Jueves
+			diaDisponible = horario.DisponibleJueves
+		case 5: // Viernes
+			diaDisponible = horario.DisponibleViernes
+		case 6: // Sábado
+			diaDisponible = horario.DisponibleSabado
+		}
+
+		if !diaDisponible {
+			return errors.New("el día seleccionado no está disponible en el horario configurado")
+		}
+	}
+
+	// Validar que no se esté cancelando un tour ya en curso
+	if tourProgramado.Estado == "CANCELADO" && tourActual.Estado == "EN_CURSO" {
+		return errors.New("no se puede cancelar un tour que ya está en curso")
+	}
+
+	return s.repo.Update(id, tourProgramado)
+}
+
+// Delete elimina lógicamente un tour programado
+func (s *TourProgramadoService) Delete(id int) error {
+	// Verificar que el tour no esté en curso o completado
+	tour, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if tour.Estado == "EN_CURSO" || tour.Estado == "COMPLETADO" {
+		return errors.New("no se puede eliminar un tour que está en curso o completado")
+	}
+
+	return s.repo.SoftDelete(id)
+}
+
+// AsignarChofer asigna un chofer a un tour programado
+func (s *TourProgramadoService) AsignarChofer(idTour int, idChofer int) error {
+	// Validar que el chofer exista y tenga rol de chofer
+	usuario, err := s.usuarioRepo.GetByID(idChofer)
+	if err != nil {
+		return errors.New("chofer no encontrado")
+	}
+
+	if usuario.Rol != "CHOFER" {
+		return errors.New("el usuario seleccionado no tiene rol de chofer")
+	}
+
+	return s.repo.AsignarChofer(idTour, idChofer)
 }
 
 // CambiarEstado cambia el estado de un tour programado
 func (s *TourProgramadoService) CambiarEstado(id int, estado string) error {
-	// Verificar estado válido
-	estadosValidos := map[string]bool{
-		"PROGRAMADO": true,
-		"COMPLETADO": true,
-		"CANCELADO":  true,
-	}
-
-	if !estadosValidos[estado] {
-		return errors.New("estado inválido, debe ser PROGRAMADO, COMPLETADO o CANCELADO")
-	}
-
-	// Verificar que el tour programado existe
-	existingTour, err := s.tourProgramadoRepo.GetByID(id)
+	// Validar la transición de estado
+	tour, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	// Si ya tiene ese estado, no hacer nada
-	if existingTour.Estado == estado {
-		return nil
+	// Reglas de transición de estado
+	switch tour.Estado {
+	case "PROGRAMADO":
+		if estado != "EN_CURSO" && estado != "CANCELADO" {
+			return errors.New("desde PROGRAMADO solo se puede cambiar a EN_CURSO o CANCELADO")
+		}
+	case "EN_CURSO":
+		if estado != "COMPLETADO" {
+			return errors.New("desde EN_CURSO solo se puede cambiar a COMPLETADO")
+		}
+	case "COMPLETADO", "CANCELADO":
+		return errors.New("no se puede cambiar el estado de un tour COMPLETADO o CANCELADO")
 	}
 
-	// Cambiar estado
-	return s.tourProgramadoRepo.UpdateEstado(id, estado)
+	return s.repo.CambiarEstado(id, estado)
 }
 
-// ReservarCupo disminuye el cupo disponible de un tour programado
-func (s *TourProgramadoService) ReservarCupo(id int, cantidad int) error {
-	// Verificar cantidad válida
-	if cantidad <= 0 {
-		return errors.New("la cantidad debe ser mayor a 0")
-	}
+// List obtiene una lista de tours programados con filtros opcionales
+func (s *TourProgramadoService) List(filtros entidades.FiltrosTourProgramado) ([]*entidades.TourProgramado, error) {
+	return s.repo.List(filtros)
+}
 
-	// Verificar que el tour programado existe
-	tour, err := s.tourProgramadoRepo.GetByID(id)
+// GetProgramacionSemanal obtiene los tours programados para una semana específica
+func (s *TourProgramadoService) GetProgramacionSemanal(fechaInicio string, idSede int) ([]*entidades.TourProgramado, error) {
+	return s.repo.GetProgramacionSemanal(fechaInicio, idSede)
+}
+
+// GetToursDisponiblesEnFecha obtiene tours disponibles para una fecha específica
+func (s *TourProgramadoService) GetToursDisponiblesEnFecha(fecha string, idSede int) ([]*entidades.TourProgramado, error) {
+	return s.repo.GetToursDisponiblesEnFecha(fecha, idSede)
+}
+
+// GetToursDisponiblesEnRangoFechas obtiene los tours disponibles para reserva en un rango de fechas
+func (s *TourProgramadoService) GetToursDisponiblesEnRangoFechas(fechaInicio, fechaFin string, idSede int) ([]*entidades.TourProgramado, error) {
+	return s.repo.GetToursDisponiblesEnRangoFechas(fechaInicio, fechaFin, idSede)
+}
+
+// VerificarDisponibilidadHorario verifica si un horario está disponible para una fecha específica
+func (s *TourProgramadoService) VerificarDisponibilidadHorario(idHorario int, fecha string) (bool, error) {
+	// 1. Verificar si el horario existe
+	horario, err := s.horarioTourRepo.GetByID(idHorario)
 	if err != nil {
-		return err
+		return false, errors.New("horario no encontrado: " + err.Error())
 	}
 
-	// Verificar que el tour está programado
-	if tour.Estado != "PROGRAMADO" {
-		return errors.New("no se puede reservar un tour que no está programado")
-	}
-
-	// Verificar disponibilidad
-	if tour.CupoDisponible < cantidad {
-		return errors.New("no hay suficiente cupo disponible")
-	}
-
-	// Actualizar cupo disponible
-	nuevoCupo := tour.CupoDisponible - cantidad
-	return s.tourProgramadoRepo.UpdateCupoDisponible(id, nuevoCupo)
-}
-
-// LiberarCupo aumenta el cupo disponible de un tour programado
-func (s *TourProgramadoService) LiberarCupo(id int, cantidad int) error {
-	// Verificar cantidad válida
-	if cantidad <= 0 {
-		return errors.New("la cantidad debe ser mayor a 0")
-	}
-
-	// Verificar que el tour programado existe
-	tour, err := s.tourProgramadoRepo.GetByID(id)
+	// 2. Verificar si el día de la semana está disponible en el horario
+	fechaObj, err := time.Parse("2006-01-02", fecha)
 	if err != nil {
-		return err
+		return false, errors.New("formato de fecha inválido, debe ser YYYY-MM-DD")
 	}
 
-	// Verificar que el tour está programado
-	if tour.Estado != "PROGRAMADO" {
-		return errors.New("no se puede liberar cupo de un tour que no está programado")
+	// Verificar que el día de la semana del tour coincida con los días disponibles en el horario
+	diaSemana := fechaObj.Weekday()
+	diaDisponible := false
+
+	switch diaSemana {
+	case 0: // Domingo
+		diaDisponible = horario.DisponibleDomingo
+	case 1: // Lunes
+		diaDisponible = horario.DisponibleLunes
+	case 2: // Martes
+		diaDisponible = horario.DisponibleMartes
+	case 3: // Miércoles
+		diaDisponible = horario.DisponibleMiercoles
+	case 4: // Jueves
+		diaDisponible = horario.DisponibleJueves
+	case 5: // Viernes
+		diaDisponible = horario.DisponibleViernes
+	case 6: // Sábado
+		diaDisponible = horario.DisponibleSabado
 	}
 
-	// Verificar que no exceda el cupo máximo
-	nuevoCupo := tour.CupoDisponible + cantidad
-	if nuevoCupo > tour.CupoMaximo {
-		return errors.New("el cupo liberado excede el cupo máximo")
+	if !diaDisponible {
+		// El día de la semana no está disponible en este horario
+		return false, nil
 	}
 
-	// Actualizar cupo disponible
-	return s.tourProgramadoRepo.UpdateCupoDisponible(id, nuevoCupo)
-}
+	// 3. Verificar si ya hay tours programados con este horario en esta fecha
+	var filtros entidades.FiltrosTourProgramado
+	fechaStr := fecha
+	filtros.FechaInicio = &fechaStr
+	filtros.FechaFin = &fechaStr
 
-// Delete elimina un tour programado (CORREGIDO - usa SoftDelete)
-func (s *TourProgramadoService) Delete(id int) error {
-	// Verificar que el tour programado existe
-	existingTour, err := s.tourProgramadoRepo.GetByID(id)
+	tours, err := s.repo.List(filtros)
 	if err != nil {
-		return err
+		return false, errors.New("error al verificar tours existentes: " + err.Error())
 	}
 
-	// Verificar que no tenga reservas
-	if existingTour.CupoMaximo != existingTour.CupoDisponible {
-		return errors.New("no se puede eliminar un tour que ya tiene reservas, solo se puede cancelar")
+	// Verificar si hay conflictos con otros tours en el mismo horario
+	for _, tour := range tours {
+		if tour.IDHorario == idHorario && !tour.Eliminado && tour.Estado != "CANCELADO" {
+			// Ya existe un tour con este horario en esta fecha
+			return false, nil
+		}
 	}
 
-	// Eliminar tour programado (usando SoftDelete en lugar de Delete)
-	return s.tourProgramadoRepo.SoftDelete(id)
+	// No hay conflictos, el horario está disponible
+	return true, nil
 }
 
-// List lista todos los tours programados
-func (s *TourProgramadoService) List() ([]*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.List()
-}
-
-// ListByFecha lista todos los tours programados para una fecha específica
-func (s *TourProgramadoService) ListByFecha(fecha time.Time) ([]*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.ListByFecha(fecha)
-}
-
-// ListByRangoFechas lista todos los tours programados para un rango de fechas
-func (s *TourProgramadoService) ListByRangoFechas(fechaInicio, fechaFin time.Time) ([]*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.ListByRangoFechas(fechaInicio, fechaFin)
-}
-
-// ListByEstado lista todos los tours programados por estado
-func (s *TourProgramadoService) ListByEstado(estado string) ([]*entidades.TourProgramado, error) {
-	// Verificar estado válido
-	estadosValidos := map[string]bool{
-		"PROGRAMADO": true,
-		"COMPLETADO": true,
-		"CANCELADO":  true,
-	}
-
-	if !estadosValidos[estado] {
-		return nil, errors.New("estado inválido, debe ser PROGRAMADO, COMPLETADO o CANCELADO")
-	}
-
-	return s.tourProgramadoRepo.ListByEstado(estado)
-}
-
-// ListByEmbarcacion lista todos los tours programados por embarcación
-func (s *TourProgramadoService) ListByEmbarcacion(idEmbarcacion int) ([]*entidades.TourProgramado, error) {
-	// Verificar que la embarcación exista
-	_, err := s.embarcacionRepo.GetByID(idEmbarcacion)
+// ProgramarToursSemanal crea tours programados para una semana basados en un template
+func (s *TourProgramadoService) ProgramarToursSemanal(fechaInicio string, tourBase *entidades.NuevoTourProgramadoRequest, cantidadDias int) ([]int, error) {
+	fechaInicioObj, err := time.Parse("2006-01-02", fechaInicio)
 	if err != nil {
-		return nil, errors.New("la embarcación especificada no existe")
+		return nil, errors.New("formato de fecha inválido, debe ser YYYY-MM-DD")
 	}
 
-	return s.tourProgramadoRepo.ListByEmbarcacion(idEmbarcacion)
-}
-
-// ListByChofer lista todos los tours programados asociados a un chofer
-func (s *TourProgramadoService) ListByChofer(idChofer int) ([]*entidades.TourProgramado, error) {
-	// Verificar que el chofer exista y tenga rol CHOFER
-	usuario, err := s.usuarioRepo.GetByID(idChofer)
+	// Validar entidades relacionadas una sola vez
+	_, err = s.tipoTourRepo.GetByID(tourBase.IDTipoTour)
 	if err != nil {
-		return nil, errors.New("el chofer especificado no existe")
-	}
-	if usuario.Rol != "CHOFER" {
-		return nil, errors.New("el usuario especificado no tiene rol de CHOFER")
+		return nil, errors.New("tipo de tour no encontrado")
 	}
 
-	return s.tourProgramadoRepo.ListByChofer(idChofer)
-}
-
-// ListToursProgramadosDisponibles lista todos los tours programados disponibles para reservación
-func (s *TourProgramadoService) ListToursProgramadosDisponibles() ([]*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.ListToursProgramadosDisponibles()
-}
-
-// ListByTipoTour lista todos los tours programados por tipo de tour
-func (s *TourProgramadoService) ListByTipoTour(idTipoTour int) ([]*entidades.TourProgramado, error) {
-	// Verificar que el tipo de tour exista
-	_, err := s.tipoTourRepo.GetByID(idTipoTour)
+	_, err = s.embarcacionRepo.GetByID(tourBase.IDEmbarcacion)
 	if err != nil {
-		return nil, errors.New("el tipo de tour especificado no existe")
+		return nil, errors.New("embarcación no encontrada")
 	}
 
-	return s.tourProgramadoRepo.ListByTipoTour(idTipoTour)
-}
-
-// GetDisponibilidadDia retorna la disponibilidad de tours para una fecha específica
-func (s *TourProgramadoService) GetDisponibilidadDia(fecha time.Time) ([]*entidades.TourProgramado, error) {
-	return s.tourProgramadoRepo.GetDisponibilidadDia(fecha)
-}
-
-// ListBySede lista todos los tours programados de una sede específica
-func (s *TourProgramadoService) ListBySede(idSede int) ([]*entidades.TourProgramado, error) {
-	// Verificar que la sede exista
-	_, err := s.sedeRepo.GetByID(idSede)
+	_, err = s.horarioTourRepo.GetByID(tourBase.IDHorario)
 	if err != nil {
-		return nil, errors.New("la sede especificada no existe")
+		return nil, errors.New("horario no encontrado")
 	}
 
-	return s.tourProgramadoRepo.ListBySede(idSede)
+	_, err = s.sedeRepo.GetByID(tourBase.IDSede)
+	if err != nil {
+		return nil, errors.New("sede no encontrada")
+	}
+
+	// Validar el chofer si se proporciona
+	if tourBase.IDChofer != nil {
+		usuario, err := s.usuarioRepo.GetByID(*tourBase.IDChofer)
+		if err != nil {
+			return nil, errors.New("chofer no encontrado")
+		}
+		if usuario.Rol != "CHOFER" {
+			return nil, errors.New("el usuario seleccionado no tiene rol de chofer")
+		}
+	}
+
+	// Validar fechas de vigencia
+	vigenciaDesde, err := time.Parse("2006-01-02", tourBase.VigenciaDesde)
+	if err != nil {
+		return nil, errors.New("formato de vigencia desde inválido, debe ser YYYY-MM-DD")
+	}
+
+	vigenciaHasta, err := time.Parse("2006-01-02", tourBase.VigenciaHasta)
+	if err != nil {
+		return nil, errors.New("formato de vigencia hasta inválido, debe ser YYYY-MM-DD")
+	}
+
+	// Verificar que la vigencia sea coherente
+	if vigenciaHasta.Before(vigenciaDesde) {
+		return nil, errors.New("la fecha de vigencia hasta debe ser posterior a la fecha de vigencia desde")
+	}
+
+	// Obtener el horario para verificar días disponibles
+	horario, err := s.horarioTourRepo.GetByID(tourBase.IDHorario)
+	if err != nil {
+		return nil, errors.New("error al verificar el horario: " + err.Error())
+	}
+
+	// Crear tours para cada día
+	tourIDs := []int{}
+	for i := 0; i < cantidadDias; i++ {
+		currentDate := fechaInicioObj.AddDate(0, 0, i)
+
+		// Verificar si el día de la semana está disponible en el horario
+		diaSemana := currentDate.Weekday()
+		diaDisponible := false
+
+		switch diaSemana {
+		case 0: // Domingo
+			diaDisponible = horario.DisponibleDomingo
+		case 1: // Lunes
+			diaDisponible = horario.DisponibleLunes
+		case 2: // Martes
+			diaDisponible = horario.DisponibleMartes
+		case 3: // Miércoles
+			diaDisponible = horario.DisponibleMiercoles
+		case 4: // Jueves
+			diaDisponible = horario.DisponibleJueves
+		case 5: // Viernes
+			diaDisponible = horario.DisponibleViernes
+		case 6: // Sábado
+			diaDisponible = horario.DisponibleSabado
+		}
+
+		// Solo crear tour si el día está disponible
+		if diaDisponible {
+			// Crear una copia del tour base con la fecha actualizada
+			nuevoTour := *tourBase
+			nuevoTour.Fecha = currentDate.Format("2006-01-02")
+
+			// Validar que la fecha esté dentro del rango de vigencia
+			if currentDate.Before(vigenciaDesde) || currentDate.After(vigenciaHasta) {
+				continue // Saltar esta fecha si está fuera del rango de vigencia
+			}
+
+			// Crear el tour
+			id, err := s.repo.Create(&nuevoTour)
+			if err != nil {
+				// Continuar con el siguiente día si hay error en este
+				continue
+			}
+
+			tourIDs = append(tourIDs, id)
+		}
+	}
+
+	if len(tourIDs) == 0 {
+		return nil, errors.New("no se pudo crear ningún tour para las fechas seleccionadas")
+	}
+
+	return tourIDs, nil
 }

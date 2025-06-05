@@ -1,5 +1,6 @@
 package servicios
 
+/*
 import (
 	"database/sql"
 	"errors"
@@ -447,3 +448,4 @@ func (s *ReservaService) ListAllReservas() ([]*entidades.Reserva, error) {
 	// Pasar nil para obtener todas las reservas sin filtrar por sede
 	return s.reservaRepo.ListBySede(nil)
 }
+*/

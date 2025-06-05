@@ -1,864 +1,769 @@
-/*package controladores
-
-import (
-	"net/http"
-	"sistema-toursseft/internal/entidades"
-	"sistema-toursseft/internal/servicios"
-	"sistema-toursseft/internal/utils"
-	"strconv"
-	"time"
-
-	"github.com/gin-gonic/gin"
-)
-
-// TourProgramadoController maneja los endpoints de tours programados
-type TourProgramadoController struct {
-	tourProgramadoService *servicios.TourProgramadoService
-}
-
-// NewTourProgramadoController crea una nueva instancia de TourProgramadoController
-func NewTourProgramadoController(tourProgramadoService *servicios.TourProgramadoService) *TourProgramadoController {
-	return &TourProgramadoController{
-		tourProgramadoService: tourProgramadoService,
-	}
-}
-
-// Create crea un nuevo tour programado
-func (c *TourProgramadoController) Create(ctx *gin.Context) {
-	var tourReq entidades.NuevoTourProgramadoRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Crear tour programado
-	id, err := c.tourProgramadoService.Create(&tourReq)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al crear tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusCreated, utils.SuccessResponse("Tour programado creado exitosamente", gin.H{"id": id}))
-}
-
-// GetByID obtiene un tour programado por su ID
-func (c *TourProgramadoController) GetByID(ctx *gin.Context) {
-	// Parsear ID de la URL
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
-		return
-	}
-
-	// Obtener tour programado
-	tour, err := c.tourProgramadoService.GetByID(id)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Tour programado no encontrado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado obtenido", tour))
-}
-
-// Update actualiza un tour programado
-func (c *TourProgramadoController) Update(ctx *gin.Context) {
-	// Parsear ID de la URL
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
-		return
-	}
-
-	var tourReq entidades.ActualizarTourProgramadoRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Actualizar tour programado
-	err = c.tourProgramadoService.Update(id, &tourReq)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al actualizar tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado actualizado exitosamente", nil))
-}
-
-// CambiarEstado cambia el estado de un tour programado
-func (c *TourProgramadoController) CambiarEstado(ctx *gin.Context) {
-	// Parsear ID de la URL
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
-		return
-	}
-
-	var estadoReq entidades.CambiarEstadoTourRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&estadoReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(estadoReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Cambiar estado
-	err = c.tourProgramadoService.CambiarEstado(id, estadoReq.Estado)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al cambiar estado del tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Estado del tour programado actualizado exitosamente", nil))
-}
-
-// Delete elimina un tour programado
-func (c *TourProgramadoController) Delete(ctx *gin.Context) {
-	// Parsear ID de la URL
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
-		return
-	}
-
-	// Eliminar tour programado
-	err = c.tourProgramadoService.Delete(id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al eliminar tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado eliminado exitosamente", nil))
-}
-
-// List lista todos los tours programados
-func (c *TourProgramadoController) List(ctx *gin.Context) {
-	// Listar tours programados
-	tours, err := c.tourProgramadoService.List()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListByFecha lista todos los tours programados para una fecha específica
-func (c *TourProgramadoController) ListByFecha(ctx *gin.Context) {
-	// Parsear fecha de la URL (formato: YYYY-MM-DD)
-	fechaStr := ctx.Param("fecha")
-	fecha, err := time.Parse("2006-01-02", fechaStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
-		return
-	}
-
-	// Listar tours programados por fecha
-	tours, err := c.tourProgramadoService.ListByFecha(fecha)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados por fecha", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListByRangoFechas lista todos los tours programados para un rango de fechas
-func (c *TourProgramadoController) ListByRangoFechas(ctx *gin.Context) {
-	// Parsear fechas de los query params (formato: YYYY-MM-DD)
-	fechaInicioStr := ctx.Query("fechaInicio")
-	fechaFinStr := ctx.Query("fechaFin")
-
-	fechaInicio, err := time.Parse("2006-01-02", fechaInicioStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inicio inválido, debe ser YYYY-MM-DD", err))
-		return
-	}
-
-	fechaFin, err := time.Parse("2006-01-02", fechaFinStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha fin inválido, debe ser YYYY-MM-DD", err))
-		return
-	}
-
-	// Verificar que fechaInicio sea anterior o igual a fechaFin
-	if fechaInicio.After(fechaFin) {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha de inicio debe ser anterior o igual a la fecha de fin", nil))
-		return
-	}
-
-	// Listar tours programados por rango de fechas
-	tours, err := c.tourProgramadoService.ListByRangoFechas(fechaInicio, fechaFin)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados por rango de fechas", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListByEstado lista todos los tours programados por estado
-func (c *TourProgramadoController) ListByEstado(ctx *gin.Context) {
-	// Parsear estado de la URL
-	estado := ctx.Param("estado")
-
-	// Listar tours programados por estado
-	tours, err := c.tourProgramadoService.ListByEstado(estado)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por estado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListByEmbarcacion lista todos los tours programados por embarcación
-func (c *TourProgramadoController) ListByEmbarcacion(ctx *gin.Context) {
-	// Parsear ID de embarcación de la URL
-	idEmbarcacion, err := strconv.Atoi(ctx.Param("idEmbarcacion"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de embarcación inválido", err))
-		return
-	}
-
-	// Listar tours programados por embarcación
-	tours, err := c.tourProgramadoService.ListByEmbarcacion(idEmbarcacion)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por embarcación", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListByChofer
-// ListByChofer lista todos los tours programados asociados a un chofer
-func (c *TourProgramadoController) ListByChofer(ctx *gin.Context) {
-	// Parsear ID de chofer de la URL
-	idChofer, err := strconv.Atoi(ctx.Param("idChofer"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de chofer inválido", err))
-		return
-	}
-
-	// Listar tours programados por chofer
-	tours, err := c.tourProgramadoService.ListByChofer(idChofer)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por chofer", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListToursProgramadosDisponibles lista todos los tours programados disponibles para reservación
-func (c *TourProgramadoController) ListToursProgramadosDisponibles(ctx *gin.Context) {
-	// Listar tours programados disponibles
-	tours, err := c.tourProgramadoService.ListToursProgramadosDisponibles()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados disponibles", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados disponibles listados exitosamente", tours))
-}
-
-// ListByTipoTour lista todos los tours programados por tipo de tour
-func (c *TourProgramadoController) ListByTipoTour(ctx *gin.Context) {
-	// Parsear ID de tipo de tour de la URL
-	idTipoTour, err := strconv.Atoi(ctx.Param("idTipoTour"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tipo de tour inválido", err))
-		return
-	}
-
-	// Listar tours programados por tipo de tour
-	tours, err := c.tourProgramadoService.ListByTipoTour(idTipoTour)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por tipo de tour", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// GetDisponibilidadDia retorna la disponibilidad de tours para una fecha específica
-func (c *TourProgramadoController) GetDisponibilidadDia(ctx *gin.Context) {
-	// Parsear fecha de la URL (formato: YYYY-MM-DD)
-	fechaStr := ctx.Param("fecha")
-	fecha, err := time.Parse("2006-01-02", fechaStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
-		return
-	}
-
-	// Obtener disponibilidad para el día
-	tours, err := c.tourProgramadoService.GetDisponibilidadDia(fecha)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener disponibilidad para el día", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Disponibilidad de tours obtenida exitosamente", tours))
-}
-
-// ListBySede lista todos los tours programados de una sede específica
-func (c *TourProgramadoController) ListBySede(ctx *gin.Context) {
-	// Parsear ID de sede de la URL
-	idSede, err := strconv.Atoi(ctx.Param("idSede"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
-		return
-	}
-
-	// Listar tours programados por sede
-	tours, err := c.tourProgramadoService.ListBySede(idSede)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por sede", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ReservarCupo permite reservar cupo en un tour programado
-func (c *TourProgramadoController) ReservarCupo(ctx *gin.Context) {
-	// Parsear ID del tour programado de la URL
-	idTour, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tour inválido", err))
-		return
-	}
-
-	// Parsear la cantidad de cupos a reservar del body
-	var request struct {
-		Cantidad int `json:"cantidad" validate:"required,min=1"`
-	}
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Reservar cupo
-	err = c.tourProgramadoService.ReservarCupo(idTour, request.Cantidad)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al reservar cupo", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Cupo reservado exitosamente", nil))
-}
-
-// LiberarCupo permite liberar cupo en un tour programado
-func (c *TourProgramadoController) LiberarCupo(ctx *gin.Context) {
-	// Parsear ID del tour programado de la URL
-	idTour, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tour inválido", err))
-		return
-	}
-
-	// Parsear la cantidad de cupos a liberar del body
-	var request struct {
-		Cantidad int `json:"cantidad" validate:"required,min=1"`
-	}
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Liberar cupo
-	err = c.tourProgramadoService.LiberarCupo(idTour, request.Cantidad)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al liberar cupo", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Cupo liberado exitosamente", nil))
-}
-*/
-
 package controladores
 
 import (
 	"net/http"
+	"strconv"
+	"time"
+
 	"sistema-toursseft/internal/entidades"
 	"sistema-toursseft/internal/servicios"
 	"sistema-toursseft/internal/utils"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// TourProgramadoController maneja los endpoints de tours programados
+// TourProgramadoController maneja las rutas relacionadas con tours programados
 type TourProgramadoController struct {
-	tourProgramadoService *servicios.TourProgramadoService
+	service *servicios.TourProgramadoService
 }
 
-// NewTourProgramadoController crea una nueva instancia de TourProgramadoController
-func NewTourProgramadoController(tourProgramadoService *servicios.TourProgramadoService) *TourProgramadoController {
+// NewTourProgramadoController crea una nueva instancia del controlador
+func NewTourProgramadoController(service *servicios.TourProgramadoService) *TourProgramadoController {
 	return &TourProgramadoController{
-		tourProgramadoService: tourProgramadoService,
+		service: service,
 	}
-}
-
-// Create crea un nuevo tour programado
-func (c *TourProgramadoController) Create(ctx *gin.Context) {
-	var tourReq entidades.NuevoTourProgramadoRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(tourReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Crear tour programado
-	id, err := c.tourProgramadoService.Create(&tourReq)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al crear tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusCreated, utils.SuccessResponse("Tour programado creado exitosamente", gin.H{"id": id}))
 }
 
 // GetByID obtiene un tour programado por su ID
 func (c *TourProgramadoController) GetByID(ctx *gin.Context) {
-	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
 		return
 	}
 
-	// Obtener tour programado
-	tour, err := c.tourProgramadoService.GetByID(id)
+	tourProgramado, err := c.service.GetByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Tour programado no encontrado", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado obtenido", tour))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado obtenido con éxito", tourProgramado))
+}
+
+// Create crea un nuevo tour programado
+func (c *TourProgramadoController) Create(ctx *gin.Context) {
+	var request entidades.NuevoTourProgramadoRequest
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+		return
+	}
+
+	// Validar campos
+	if err := utils.ValidateStruct(request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	// Validar las fechas de vigencia
+	if request.VigenciaDesde == "" || request.VigenciaHasta == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Las fechas de vigencia son obligatorias", nil))
+		return
+	}
+
+	// Validar formato y lógica de fechas
+	fechaTour, err := time.Parse("2006-01-02", request.Fecha)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
+		return
+	}
+
+	vigenciaDesde, err := time.Parse("2006-01-02", request.VigenciaDesde)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha vigencia desde inválido, debe ser YYYY-MM-DD", err))
+		return
+	}
+
+	vigenciaHasta, err := time.Parse("2006-01-02", request.VigenciaHasta)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha vigencia hasta inválido, debe ser YYYY-MM-DD", err))
+		return
+	}
+
+	// Validaciones lógicas de fechas
+	if vigenciaDesde.After(vigenciaHasta) {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha de vigencia desde no puede ser posterior a la fecha de vigencia hasta", nil))
+		return
+	}
+
+	if fechaTour.Before(vigenciaDesde) || fechaTour.After(vigenciaHasta) {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha del tour debe estar dentro del rango de vigencia", nil))
+		return
+	}
+
+	id, err := c.service.Create(&request)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al crear tour programado", err))
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, utils.SuccessResponse("Tour programado creado con éxito", gin.H{"id": id}))
 }
 
 // Update actualiza un tour programado
 func (c *TourProgramadoController) Update(ctx *gin.Context) {
-	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
 		return
 	}
 
-	var tourReq entidades.ActualizarTourProgramadoRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&tourReq); err != nil {
+	var request entidades.ActualizarTourProgramadoRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
 		return
 	}
 
-	// Validar datos
-	if err := utils.ValidateStruct(tourReq); err != nil {
+	// Validar campos
+	if err := utils.ValidateStruct(request); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
 		return
 	}
 
-	// Actualizar tour programado
-	err = c.tourProgramadoService.Update(id, &tourReq)
+	// Validar la coherencia de las fechas de vigencia si se proporcionan
+	if request.VigenciaDesde != "" && request.VigenciaHasta != "" {
+		vigenciaDesde, err := time.Parse("2006-01-02", request.VigenciaDesde)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha vigencia desde inválido, debe ser YYYY-MM-DD", err))
+			return
+		}
+
+		vigenciaHasta, err := time.Parse("2006-01-02", request.VigenciaHasta)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha vigencia hasta inválido, debe ser YYYY-MM-DD", err))
+			return
+		}
+
+		if vigenciaDesde.After(vigenciaHasta) {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha de vigencia desde no puede ser posterior a la fecha de vigencia hasta", nil))
+			return
+		}
+
+		// Si también se proporciona una fecha de tour, validar que esté dentro del rango de vigencia
+		if request.Fecha != "" {
+			fechaTour, err := time.Parse("2006-01-02", request.Fecha)
+			if err != nil {
+				ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
+				return
+			}
+
+			if fechaTour.Before(vigenciaDesde) || fechaTour.After(vigenciaHasta) {
+				ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha del tour debe estar dentro del rango de vigencia", nil))
+				return
+			}
+		}
+	} else if (request.VigenciaDesde != "" && request.VigenciaHasta == "") || (request.VigenciaDesde == "" && request.VigenciaHasta != "") {
+		// Si solo se proporciona una de las fechas de vigencia
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Debe proporcionar ambas fechas de vigencia o ninguna", nil))
+		return
+	}
+
+	err = c.service.Update(id, &request)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al actualizar tour programado", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado actualizado exitosamente", nil))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado actualizado con éxito", nil))
 }
 
-// CambiarEstado cambia el estado de un tour programado
-func (c *TourProgramadoController) CambiarEstado(ctx *gin.Context) {
-	// Parsear ID de la URL
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
-		return
-	}
-
-	var estadoReq entidades.CambiarEstadoTourRequest
-
-	// Parsear request
-	if err := ctx.ShouldBindJSON(&estadoReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(estadoReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Cambiar estado
-	err = c.tourProgramadoService.CambiarEstado(id, estadoReq.Estado)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al cambiar estado del tour programado", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Estado del tour programado actualizado exitosamente", nil))
-}
-
-// Delete elimina un tour programado
+// Delete elimina lógicamente un tour programado
 func (c *TourProgramadoController) Delete(ctx *gin.Context) {
-	// Parsear ID de la URL
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
 		return
 	}
 
-	// Eliminar tour programado
-	err = c.tourProgramadoService.Delete(id)
+	err = c.service.Delete(id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al eliminar tour programado", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado eliminado exitosamente", nil))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tour programado eliminado con éxito", nil))
 }
 
-// List lista todos los tours programados
+// List obtiene una lista de tours programados con filtros opcionales
 func (c *TourProgramadoController) List(ctx *gin.Context) {
-	// Listar tours programados
-	tours, err := c.tourProgramadoService.List()
+	var filtros entidades.FiltrosTourProgramado
+
+	// Extraer parámetros de consulta
+	if idSede := ctx.Query("id_sede"); idSede != "" {
+		if id, err := strconv.Atoi(idSede); err == nil {
+			filtros.IDSede = &id
+		}
+	}
+
+	if idTipoTour := ctx.Query("id_tipo_tour"); idTipoTour != "" {
+		if id, err := strconv.Atoi(idTipoTour); err == nil {
+			filtros.IDTipoTour = &id
+		}
+	}
+
+	if idChofer := ctx.Query("id_chofer"); idChofer != "" {
+		if id, err := strconv.Atoi(idChofer); err == nil {
+			filtros.IDChofer = &id
+		}
+	}
+
+	if idEmbarcacion := ctx.Query("id_embarcacion"); idEmbarcacion != "" {
+		if id, err := strconv.Atoi(idEmbarcacion); err == nil {
+			filtros.IDEmbarcacion = &id
+		}
+	}
+
+	if estado := ctx.Query("estado"); estado != "" {
+		filtros.Estado = &estado
+	}
+
+	if fechaInicio := ctx.Query("fecha_inicio"); fechaInicio != "" {
+		if _, err := time.Parse("2006-01-02", fechaInicio); err == nil {
+			filtros.FechaInicio = &fechaInicio
+		}
+	}
+
+	if fechaFin := ctx.Query("fecha_fin"); fechaFin != "" {
+		if _, err := time.Parse("2006-01-02", fechaFin); err == nil {
+			filtros.FechaFin = &fechaFin
+		}
+	}
+
+	// Añadir filtros de vigencia
+	if vigenciaDesdeIni := ctx.Query("vigencia_desde_ini"); vigenciaDesdeIni != "" {
+		if _, err := time.Parse("2006-01-02", vigenciaDesdeIni); err == nil {
+			filtros.VigenciaDesdeIni = &vigenciaDesdeIni
+		}
+	}
+
+	if vigenciaDesdefin := ctx.Query("vigencia_desde_fin"); vigenciaDesdefin != "" {
+		if _, err := time.Parse("2006-01-02", vigenciaDesdefin); err == nil {
+			filtros.VigenciaDesdefin = &vigenciaDesdefin
+		}
+	}
+
+	if vigenciaHastaIni := ctx.Query("vigencia_hasta_ini"); vigenciaHastaIni != "" {
+		if _, err := time.Parse("2006-01-02", vigenciaHastaIni); err == nil {
+			filtros.VigenciaHastaIni = &vigenciaHastaIni
+		}
+	}
+
+	if vigenciaHastaFin := ctx.Query("vigencia_hasta_fin"); vigenciaHastaFin != "" {
+		if _, err := time.Parse("2006-01-02", vigenciaHastaFin); err == nil {
+			filtros.VigenciaHastaFin = &vigenciaHastaFin
+		}
+	}
+
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// ListByFecha lista todos los tours programados para una fecha específica
-func (c *TourProgramadoController) ListByFecha(ctx *gin.Context) {
-	// Parsear fecha de la URL (formato: YYYY-MM-DD)
-	fechaStr := ctx.Param("fecha")
-	fecha, err := time.Parse("2006-01-02", fechaStr)
+// AsignarChofer asigna un chofer a un tour programado
+func (c *TourProgramadoController) AsignarChofer(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	var request entidades.AsignarChoferRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+		return
+	}
+
+	// Validar campos
+	if err := utils.ValidateStruct(request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
+		return
+	}
+
+	err = c.service.AsignarChofer(id, request.IDChofer)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al asignar chofer", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Chofer asignado con éxito", nil))
+}
+
+// CambiarEstado cambia el estado de un tour programado
+func (c *TourProgramadoController) CambiarEstado(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID inválido", err))
+		return
+	}
+
+	estado := ctx.Query("estado")
+	if estado == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el parámetro 'estado'", nil))
+		return
+	}
+
+	err = c.service.CambiarEstado(id, estado)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al cambiar estado", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Estado actualizado con éxito", nil))
+}
+
+// GetProgramacionSemanal obtiene los tours programados para una semana específica
+func (c *TourProgramadoController) GetProgramacionSemanal(ctx *gin.Context) {
+	fechaInicio := ctx.Query("fecha_inicio")
+	if fechaInicio == "" {
+		// Si no se proporciona fecha, usar la fecha actual
+		fechaInicio = time.Now().Format("2006-01-02")
+	}
+
+	idSedeStr := ctx.Query("id_sede")
+	idSede := 0
+	if idSedeStr != "" {
+		var err error
+		idSede, err = strconv.Atoi(idSedeStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+			return
+		}
+	}
+
+	tours, err := c.service.GetProgramacionSemanal(fechaInicio, idSede)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener programación semanal", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Programación semanal obtenida con éxito", tours))
+}
+
+// GetToursDisponiblesEnFecha obtiene tours disponibles para una fecha específica
+func (c *TourProgramadoController) GetToursDisponiblesEnFecha(ctx *gin.Context) {
+	fecha := ctx.Param("fecha")
+	if fecha == "" {
+		// Si no se proporciona fecha, usar la fecha actual
+		fecha = time.Now().Format("2006-01-02")
+	}
+
+	// Validar formato de fecha
+	_, err := time.Parse("2006-01-02", fecha)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
 		return
 	}
 
-	// Listar tours programados por fecha
-	tours, err := c.tourProgramadoService.ListByFecha(fecha)
+	idSedeStr := ctx.Query("id_sede")
+	idSede := 0
+	if idSedeStr != "" {
+		var err error
+		idSede, err = strconv.Atoi(idSedeStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+			return
+		}
+	}
+
+	tours, err := c.service.GetToursDisponiblesEnFecha(fecha, idSede)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados por fecha", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours disponibles", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours disponibles obtenidos con éxito", tours))
 }
 
-// ListByRangoFechas lista todos los tours programados para un rango de fechas
+// GetToursDisponiblesEnRangoFechas obtiene tours disponibles para un rango de fechas
+func (c *TourProgramadoController) GetToursDisponiblesEnRangoFechas(ctx *gin.Context) {
+	fechaInicio := ctx.Query("fecha_inicio")
+	fechaFin := ctx.Query("fecha_fin")
+
+	if fechaInicio == "" || fechaFin == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requieren los parámetros 'fecha_inicio' y 'fecha_fin' en formato YYYY-MM-DD", nil))
+		return
+	}
+
+	// Validar formato de fechas
+	_, err := time.Parse("2006-01-02", fechaInicio)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inicio inválido", err))
+		return
+	}
+
+	_, err = time.Parse("2006-01-02", fechaFin)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha fin inválido", err))
+		return
+	}
+
+	idSedeStr := ctx.Query("id_sede")
+	idSede := 0
+	if idSedeStr != "" {
+		var err error
+		idSede, err = strconv.Atoi(idSedeStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+			return
+		}
+	}
+
+	tours, err := c.service.GetToursDisponiblesEnRangoFechas(fechaInicio, fechaFin, idSede)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours disponibles", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours disponibles obtenidos con éxito", tours))
+}
+
+// VerificarDisponibilidadHorario verifica si un horario está disponible para una fecha específica
+func (c *TourProgramadoController) VerificarDisponibilidadHorario(ctx *gin.Context) {
+	idHorarioStr := ctx.Query("id_horario")
+	fecha := ctx.Query("fecha")
+
+	if idHorarioStr == "" || fecha == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requieren los parámetros 'id_horario' y 'fecha'", nil))
+		return
+	}
+
+	idHorario, err := strconv.Atoi(idHorarioStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de horario inválido", err))
+		return
+	}
+
+	// Verificar primero que la fecha sea válida
+	_, err = time.Parse("2006-01-02", fecha)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
+		return
+	}
+
+	// Usar el método del servicio en lugar del método auxiliar
+	disponible, err := c.service.VerificarDisponibilidadHorario(idHorario, fecha)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al verificar disponibilidad", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Disponibilidad verificada con éxito", gin.H{
+		"disponible": disponible,
+	}))
+}
+
+// Método auxiliar para verificar disponibilidad de horario
+// (Esta función debería implementarse en el servicio)
+func (c *TourProgramadoController) verificarDisponibilidadHorario(idHorario int, fecha string) (bool, error) {
+	// Esta es una implementación temporal. En una implementación real,
+	// deberías implementar esta funcionalidad en el servicio.
+	return true, nil
+}
+
+// ListByFecha obtiene los tours programados para una fecha específica
+func (c *TourProgramadoController) ListByFecha(ctx *gin.Context) {
+	fecha := ctx.Param("fecha")
+	if fecha == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere la fecha en formato YYYY-MM-DD", nil))
+		return
+	}
+
+	// Validar formato de fecha
+	_, err := time.Parse("2006-01-02", fecha)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido", err))
+		return
+	}
+
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.FechaInicio = &fecha
+	filtros.FechaFin = &fecha
+
+	tours, err := c.service.List(filtros)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
+}
+
+// ListByRangoFechas obtiene los tours programados para un rango de fechas
 func (c *TourProgramadoController) ListByRangoFechas(ctx *gin.Context) {
-	// Parsear fechas de los query params (formato: YYYY-MM-DD)
-	fechaInicioStr := ctx.Query("fecha_inicio")
-	fechaFinStr := ctx.Query("fecha_fin")
+	fechaInicio := ctx.Query("fecha_inicio")
+	fechaFin := ctx.Query("fecha_fin")
 
-	if fechaInicioStr == "" || fechaFinStr == "" {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requieren los parámetros fecha_inicio y fecha_fin", nil))
+	if fechaInicio == "" || fechaFin == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requieren los parámetros 'fecha_inicio' y 'fecha_fin' en formato YYYY-MM-DD", nil))
 		return
 	}
 
-	fechaInicio, err := time.Parse("2006-01-02", fechaInicioStr)
+	// Validar formato de fechas
+	_, err := time.Parse("2006-01-02", fechaInicio)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inicio inválido, debe ser YYYY-MM-DD", err))
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inicio inválido", err))
 		return
 	}
 
-	fechaFin, err := time.Parse("2006-01-02", fechaFinStr)
+	_, err = time.Parse("2006-01-02", fechaFin)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha fin inválido, debe ser YYYY-MM-DD", err))
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha fin inválido", err))
 		return
 	}
 
-	// Verificar que fechaInicio sea anterior o igual a fechaFin
-	if fechaInicio.After(fechaFin) {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("La fecha de inicio debe ser anterior o igual a la fecha de fin", nil))
-		return
-	}
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.FechaInicio = &fechaInicio
+	filtros.FechaFin = &fechaFin
 
-	// Listar tours programados por rango de fechas
-	tours, err := c.tourProgramadoService.ListByRangoFechas(fechaInicio, fechaFin)
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados por rango de fechas", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// ListByEstado lista todos los tours programados por estado
+// ListByEstado obtiene los tours programados por estado
 func (c *TourProgramadoController) ListByEstado(ctx *gin.Context) {
-	// Parsear estado de la URL
 	estado := ctx.Param("estado")
-
-	// Listar tours programados por estado
-	tours, err := c.tourProgramadoService.ListByEstado(estado)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por estado", err))
+	if estado == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el parámetro 'estado'", nil))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	// Validar que el estado sea válido
+	estadosValidos := []string{"PROGRAMADO", "EN_CURSO", "COMPLETADO", "CANCELADO"}
+	estadoValido := false
+	for _, e := range estadosValidos {
+		if e == estado {
+			estadoValido = true
+			break
+		}
+	}
+
+	if !estadoValido {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Estado no válido. Debe ser: PROGRAMADO, EN_CURSO, COMPLETADO o CANCELADO", nil))
+		return
+	}
+
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.Estado = &estado
+
+	tours, err := c.service.List(filtros)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// ListByEmbarcacion lista todos los tours programados por embarcación
+// ListToursProgramadosDisponibles lista los tours programados disponibles para reserva
+func (c *TourProgramadoController) ListToursProgramadosDisponibles(ctx *gin.Context) {
+	// Por defecto, buscar desde la fecha actual en adelante
+	fechaActual := time.Now().Format("2006-01-02")
+
+	fechaInicio := ctx.Query("fecha_inicio")
+	if fechaInicio == "" {
+		fechaInicio = fechaActual
+	}
+
+	fechaFin := ctx.Query("fecha_fin")
+	// Si no se proporciona fecha fin, usar 30 días después de la fecha inicio
+	if fechaFin == "" {
+		fechaInicioTime, _ := time.Parse("2006-01-02", fechaInicio)
+		fechaFin = fechaInicioTime.AddDate(0, 0, 30).Format("2006-01-02")
+	}
+
+	idSedeStr := ctx.Query("id_sede")
+	idSede := 0
+	if idSedeStr != "" {
+		var err error
+		idSede, err = strconv.Atoi(idSedeStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+			return
+		}
+	}
+
+	// Usar el método específico para obtener tours disponibles en un rango de fechas
+	tours, err := c.service.GetToursDisponiblesEnRangoFechas(fechaInicio, fechaFin, idSede)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours disponibles", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours disponibles obtenidos con éxito", tours))
+}
+
+// GetDisponibilidadDia obtiene la disponibilidad de tours para un día específico
+func (c *TourProgramadoController) GetDisponibilidadDia(ctx *gin.Context) {
+	fecha := ctx.Param("fecha")
+	if fecha == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere la fecha en formato YYYY-MM-DD", nil))
+		return
+	}
+
+	// Validar formato de fecha
+	_, err := time.Parse("2006-01-02", fecha)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido", err))
+		return
+	}
+
+	idSedeStr := ctx.Query("id_sede")
+	idSede := 0
+	if idSedeStr != "" {
+		var err error
+		idSede, err = strconv.Atoi(idSedeStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
+			return
+		}
+	}
+
+	// Usar el método GetToursDisponiblesEnFecha
+	tours, err := c.service.GetToursDisponiblesEnFecha(fecha, idSede)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener disponibilidad", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Disponibilidad obtenida con éxito", tours))
+}
+
+// GetToursVigentes obtiene los tours que están vigentes en la fecha actual
+func (c *TourProgramadoController) GetToursVigentes(ctx *gin.Context) {
+	// Fecha actual
+	fechaActual := time.Now().Format("2006-01-02")
+
+	// Usar filtros para obtener tours cuyo período de vigencia incluya la fecha actual
+	var filtros entidades.FiltrosTourProgramado
+	filtros.VigenciaDesdeIni = &fechaActual // vigencia_desde <= fechaActual
+	filtros.VigenciaHastaFin = &fechaActual // vigencia_hasta >= fechaActual
+
+	tours, err := c.service.List(filtros)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours vigentes", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours vigentes obtenidos con éxito", tours))
+}
+
+// ListByEmbarcacion obtiene los tours programados por embarcación
 func (c *TourProgramadoController) ListByEmbarcacion(ctx *gin.Context) {
-	// Parsear ID de embarcación de la URL
-	idEmbarcacion, err := strconv.Atoi(ctx.Param("idEmbarcacion"))
+	idEmbarcacionStr := ctx.Param("idEmbarcacion")
+	if idEmbarcacionStr == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el ID de embarcación", nil))
+		return
+	}
+
+	idEmbarcacion, err := strconv.Atoi(idEmbarcacionStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de embarcación inválido", err))
 		return
 	}
 
-	// Listar tours programados por embarcación
-	tours, err := c.tourProgramadoService.ListByEmbarcacion(idEmbarcacion)
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.IDEmbarcacion = &idEmbarcacion
+
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por embarcación", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// ListByChofer lista todos los tours programados asociados a un chofer
-func (c *TourProgramadoController) ListByChofer(ctx *gin.Context) {
-	// Parsear ID de chofer de la URL
-	idChofer, err := strconv.Atoi(ctx.Param("idChofer"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de chofer inválido", err))
-		return
-	}
-
-	// Listar tours programados por chofer
-	tours, err := c.tourProgramadoService.ListByChofer(idChofer)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por chofer", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
-}
-
-// ListToursProgramadosDisponibles lista todos los tours programados disponibles para reservación
-func (c *TourProgramadoController) ListToursProgramadosDisponibles(ctx *gin.Context) {
-	// Listar tours programados disponibles
-	tours, err := c.tourProgramadoService.ListToursProgramadosDisponibles()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al listar tours programados disponibles", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados disponibles listados exitosamente", tours))
-}
-
-// ListByTipoTour lista todos los tours programados por tipo de tour
+// ListByTipoTour obtiene los tours programados por tipo de tour
 func (c *TourProgramadoController) ListByTipoTour(ctx *gin.Context) {
-	// Parsear ID de tipo de tour de la URL
-	idTipoTour, err := strconv.Atoi(ctx.Param("idTipoTour"))
+	idTipoTourStr := ctx.Param("idTipoTour")
+	if idTipoTourStr == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el ID de tipo de tour", nil))
+		return
+	}
+
+	idTipoTour, err := strconv.Atoi(idTipoTourStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tipo de tour inválido", err))
 		return
 	}
 
-	// Listar tours programados por tipo de tour
-	tours, err := c.tourProgramadoService.ListByTipoTour(idTipoTour)
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.IDTipoTour = &idTipoTour
+
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por tipo de tour", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// GetDisponibilidadDia retorna la disponibilidad de tours para una fecha específica
-func (c *TourProgramadoController) GetDisponibilidadDia(ctx *gin.Context) {
-	// Parsear fecha de la URL (formato: YYYY-MM-DD)
-	fechaStr := ctx.Param("fecha")
-	fecha, err := time.Parse("2006-01-02", fechaStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Formato de fecha inválido, debe ser YYYY-MM-DD", err))
-		return
-	}
-
-	// Obtener disponibilidad para el día
-	tours, err := c.tourProgramadoService.GetDisponibilidadDia(fecha)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener disponibilidad para el día", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Disponibilidad de tours obtenida exitosamente", tours))
-}
-
-// ListBySede lista todos los tours programados de una sede específica
+// ListBySede obtiene los tours programados por sede
 func (c *TourProgramadoController) ListBySede(ctx *gin.Context) {
-	// Parsear ID de sede de la URL
-	idSede, err := strconv.Atoi(ctx.Param("idSede"))
+	idSedeStr := ctx.Param("idSede")
+	if idSedeStr == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el ID de sede", nil))
+		return
+	}
+
+	idSede, err := strconv.Atoi(idSedeStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de sede inválido", err))
 		return
 	}
 
-	// Listar tours programados por sede
-	tours, err := c.tourProgramadoService.ListBySede(idSede)
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.IDSede = &idSede
+
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al listar tours programados por sede", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados listados exitosamente", tours))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
-// ReservarCupo permite reservar cupo en un tour programado
-func (c *TourProgramadoController) ReservarCupo(ctx *gin.Context) {
-	// Parsear ID del tour programado de la URL
-	idTour, err := strconv.Atoi(ctx.Param("id"))
+// ListByChofer obtiene los tours programados por chofer
+func (c *TourProgramadoController) ListByChofer(ctx *gin.Context) {
+	idChoferStr := ctx.Param("idChofer")
+	if idChoferStr == "" {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Se requiere el ID de chofer", nil))
+		return
+	}
+
+	idChofer, err := strconv.Atoi(idChoferStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tour inválido", err))
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de chofer inválido", err))
 		return
 	}
 
-	// Parsear la cantidad de cupos a reservar del body
-	var request struct {
-		Cantidad int `json:"cantidad" validate:"required,min=1"`
-	}
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
+	// Usar el mismo filtro que en List
+	var filtros entidades.FiltrosTourProgramado
+	filtros.IDChofer = &idChofer
 
-	// Validar datos
-	if err := utils.ValidateStruct(request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Reservar cupo
-	err = c.tourProgramadoService.ReservarCupo(idTour, request.Cantidad)
+	tours, err := c.service.List(filtros)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al reservar cupo", err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours programados", err))
 		return
 	}
 
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Cupo reservado exitosamente", nil))
-}
-
-// LiberarCupo permite liberar cupo en un tour programado
-func (c *TourProgramadoController) LiberarCupo(ctx *gin.Context) {
-	// Parsear ID del tour programado de la URL
-	idTour, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("ID de tour inválido", err))
-		return
-	}
-
-	// Parsear la cantidad de cupos a liberar del body
-	var request struct {
-		Cantidad int `json:"cantidad" validate:"required,min=1"`
-	}
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
-		return
-	}
-
-	// Validar datos
-	if err := utils.ValidateStruct(request); err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error de validación", err))
-		return
-	}
-
-	// Liberar cupo
-	err = c.tourProgramadoService.LiberarCupo(idTour, request.Cantidad)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Error al liberar cupo", err))
-		return
-	}
-
-	// Respuesta exitosa
-	ctx.JSON(http.StatusOK, utils.SuccessResponse("Cupo liberado exitosamente", nil))
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }

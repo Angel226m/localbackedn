@@ -1,5 +1,6 @@
 package controladores
 
+/*
 import (
 	"net/http"
 	"sistema-toursseft/internal/entidades"
@@ -456,3 +457,4 @@ func (c *ReservaController) tieneAccesoAReserva(ctx *gin.Context, reserva *entid
 	sedeUsuario := ctx.GetInt("sede_id")
 	return reserva.IDSede == sedeUsuario
 }
+*/
