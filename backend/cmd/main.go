@@ -36,7 +36,7 @@ func main() {
 
 	// Configurar CORS con más opciones y headers
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"https://localhost:5173", "http://127.0.0.1:5173"},
+		AllowOrigins: []string{"https://localhost:5173", "https://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"},
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{
 			"Origin",
