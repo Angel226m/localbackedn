@@ -758,6 +758,19 @@ func (c *TourProgramadoController) ListByChofer(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours programados obtenidos con éxito", tours))
 }
 
+// En controladores/TourProgramadoController.go
+
+// GetToursDisponibles obtiene tours disponibles para reserva
+func (c *TourProgramadoController) GetToursDisponibles(ctx *gin.Context) {
+	tours, err := c.service.GetToursDisponibles()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener tours disponibles", err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Tours disponibles obtenidos con éxito", tours))
+}
+
 /*package controladores
 
 import (

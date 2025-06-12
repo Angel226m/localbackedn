@@ -1084,3 +1084,77 @@ func (r *TourProgramadoRepository) ProgramarToursSemanal(tourBase *entidades.Nue
 
 	return tourIDs, nil
 }
+
+// En repositorios/TourProgramadoRepository.go
+
+// GetToursDisponibles obtiene tours disponibles para reserva
+func (r *TourProgramadoRepository) GetToursDisponibles() ([]*entidades.TourProgramado, error) {
+	// Fecha actual para validar que solo se muestren tours vigentes
+	fechaActual := time.Now().Format("2006-01-02")
+
+	query := `
+        SELECT DISTINCT ON (tp.id_tour_programado) 
+            tp.id_tour_programado, tp.id_tipo_tour, tp.id_embarcacion, tp.id_horario, tp.id_sede, 
+            tp.id_chofer, tp.fecha, tp.vigencia_desde, tp.vigencia_hasta, tp.cupo_maximo, tp.cupo_disponible, 
+            tp.estado, tp.eliminado, tp.es_excepcion, tp.notas_excepcion,
+            tt.nombre as nombre_tipo_tour, e.nombre as nombre_embarcacion, s.nombre as nombre_sede,
+            u.nombres || ' ' || u.apellidos as nombre_chofer,
+            ht.hora_inicio, ht.hora_fin
+        FROM tour_programado tp
+        INNER JOIN tipo_tour tt ON tp.id_tipo_tour = tt.id_tipo_tour
+        INNER JOIN embarcacion e ON tp.id_embarcacion = e.id_embarcacion
+        INNER JOIN sede s ON tp.id_sede = s.id_sede
+        INNER JOIN horario_tour ht ON tp.id_horario = ht.id_horario
+        LEFT JOIN usuario u ON tp.id_chofer = u.id_usuario
+        WHERE tp.eliminado = false
+        AND tp.estado = 'PROGRAMADO'
+        AND tp.cupo_disponible > 0
+        AND $1::date BETWEEN tp.vigencia_desde AND tp.vigencia_hasta
+        ORDER BY tp.id_tour_programado, ht.hora_inicio
+    `
+
+	rows, err := r.db.Query(query, fechaActual)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	toursProgramados := []*entidades.TourProgramado{}
+
+	for rows.Next() {
+		tourProgramado := &entidades.TourProgramado{}
+		var idChofer sql.NullInt64
+		var notasExcepcion sql.NullString
+		var nombreChofer sql.NullString
+
+		err := rows.Scan(
+			&tourProgramado.ID, &tourProgramado.IDTipoTour, &tourProgramado.IDEmbarcacion,
+			&tourProgramado.IDHorario, &tourProgramado.IDSede, &idChofer,
+			&tourProgramado.Fecha, &tourProgramado.VigenciaDesde, &tourProgramado.VigenciaHasta,
+			&tourProgramado.CupoMaximo, &tourProgramado.CupoDisponible,
+			&tourProgramado.Estado, &tourProgramado.Eliminado, &tourProgramado.EsExcepcion, &notasExcepcion,
+			&tourProgramado.NombreTipoTour, &tourProgramado.NombreEmbarcacion, &tourProgramado.NombreSede,
+			&nombreChofer, &tourProgramado.HoraInicio, &tourProgramado.HoraFin,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		tourProgramado.IDChofer = idChofer
+		tourProgramado.NotasExcepcion = notasExcepcion
+
+		if nombreChofer.Valid {
+			tourProgramado.NombreChofer = nombreChofer.String
+		} else {
+			tourProgramado.NombreChofer = "Sin asignar"
+		}
+
+		toursProgramados = append(toursProgramados, tourProgramado)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return toursProgramados, nil
+}

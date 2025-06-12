@@ -157,12 +157,56 @@ func (c *InstanciaTourController) ListByTourProgramado(ctx *gin.Context) {
 }
 
 // ListByFiltros lista instancias de tour según filtros específicos
+/*
 func (c *InstanciaTourController) ListByFiltros(ctx *gin.Context) {
 	var filtros entidades.FiltrosInstanciaTour
 
 	// Parsear request
 	if err := ctx.ShouldBindJSON(&filtros); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+		return
+	}
+
+	// Listar instancias de tour por filtros
+	instancias, err := c.instanciaTourService.ListByFiltros(filtros)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al filtrar instancias de tour", err))
+		return
+	}
+
+	// Respuesta exitosa
+	ctx.JSON(http.StatusOK, utils.SuccessResponse("Instancias de tour filtradas exitosamente", instancias))
+}
+*/
+
+// ListByFiltros lista instancias de tour según filtros específicos
+func (c *InstanciaTourController) ListByFiltros(ctx *gin.Context) {
+	// Obtener filtros del contexto
+	filtrosInterface, exists := ctx.Get("filtros")
+	if !exists {
+		// Si no hay filtros en el contexto, intentar leerlos del JSON del cuerpo
+		var filtros entidades.FiltrosInstanciaTour
+		if err := ctx.ShouldBindJSON(&filtros); err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+			return
+		}
+
+		// Listar instancias de tour por filtros
+		instancias, err := c.instanciaTourService.ListByFiltros(filtros)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al filtrar instancias de tour", err))
+			return
+		}
+
+		// Respuesta exitosa
+		ctx.JSON(http.StatusOK, utils.SuccessResponse("Instancias de tour filtradas exitosamente", instancias))
+		return
+	}
+
+	// Convertir interface{} a FiltrosInstanciaTour
+	filtros, ok := filtrosInterface.(entidades.FiltrosInstanciaTour)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Tipo de filtros inválido", nil))
 		return
 	}
 

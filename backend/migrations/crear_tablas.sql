@@ -251,16 +251,26 @@ CREATE INDEX idx_canal_venta_eliminado ON canal_venta(eliminado);
 -- 13. Tabla cliente (sin dependencias)
 CREATE TABLE cliente (
     id_cliente SERIAL PRIMARY KEY,
-    tipo_documento VARCHAR(50) NOT NULL,
+    tipo_documento VARCHAR(50) NOT NULL, -- DNI, CE, Pasaporte, RUC
     numero_documento VARCHAR(20) NOT NULL,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
+    nombres VARCHAR(100), -- NULL para empresas
+    apellidos VARCHAR(100), -- NULL para empresas
+    razon_social VARCHAR(200), -- NULL para personas naturales
+    direccion_fiscal VARCHAR(255), -- Dirección fiscal para facturación
     correo VARCHAR(100),
+    numero_celular VARCHAR(20),
     contrasena VARCHAR(255),
-    eliminado BOOLEAN DEFAULT FALSE
+    eliminado BOOLEAN DEFAULT FALSE,
+    CONSTRAINT chk_tipo_documento CHECK (
+        (tipo_documento = 'RUC' AND razon_social IS NOT NULL AND direccion_fiscal IS NOT NULL) OR
+        (tipo_documento IN ('DNI', 'CE', 'Pasaporte') AND nombres IS NOT NULL AND apellidos IS NOT NULL)
+    )
 );
+
+-- Mantener los índices existentes
 CREATE INDEX idx_cliente_documento ON cliente(tipo_documento, numero_documento);
 CREATE INDEX idx_cliente_nombres_apellidos ON cliente(nombres, apellidos);
+CREATE INDEX idx_cliente_razon_social ON cliente(razon_social); -- Nuevo índice
 CREATE INDEX idx_cliente_correo ON cliente(correo);
 CREATE INDEX idx_cliente_eliminado ON cliente(eliminado);
 
@@ -783,3 +793,22 @@ CREATE INDEX idx_devolucion_pago_fecha ON devolucion_pago(fecha_devolucion);
 CREATE INDEX idx_devolucion_pago_estado ON devolucion_pago(estado);
 
  */
+
+
+ 
+-- 13. Tabla cliente (sin dependencias)
+/*CREATE TABLE cliente (
+    id_cliente SERIAL PRIMARY KEY,
+    tipo_documento VARCHAR(50) NOT NULL,
+    numero_documento VARCHAR(20) NOT NULL,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    correo VARCHAR(100),
+    numero_celular VARCHAR(20),  -- VARCHAR es lo más adecuado para teléfonos
+    contrasena VARCHAR(255),
+    eliminado BOOLEAN DEFAULT FALSE
+);
+CREATE INDEX idx_cliente_documento ON cliente(tipo_documento, numero_documento);
+CREATE INDEX idx_cliente_nombres_apellidos ON cliente(nombres, apellidos);
+CREATE INDEX idx_cliente_correo ON cliente(correo);
+CREATE INDEX idx_cliente_eliminado ON cliente(eliminado);*/
