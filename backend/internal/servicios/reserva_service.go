@@ -1,6 +1,5 @@
 package servicios
 
-/*
 import (
 	"database/sql"
 	"errors"
@@ -16,11 +15,12 @@ type ReservaService struct {
 	db                 *sql.DB
 	reservaRepo        *repositorios.ReservaRepository
 	clienteRepo        *repositorios.ClienteRepository
-	tourProgramadoRepo *repositorios.TourProgramadoRepository
+	instanciaTourRepo  *repositorios.InstanciaTourRepository
 	canalVentaRepo     *repositorios.CanalVentaRepository
 	tipoPasajeRepo     *repositorios.TipoPasajeRepository
+	paquetePasajesRepo *repositorios.PaquetePasajesRepository
 	usuarioRepo        *repositorios.UsuarioRepository
-	sedeRepo           *repositorios.SedeRepository // Añadido repositorio de sedes
+	sedeRepo           *repositorios.SedeRepository
 }
 
 // NewReservaService crea una nueva instancia de ReservaService
@@ -29,21 +29,23 @@ func NewReservaService(
 	db *sql.DB,
 	reservaRepo *repositorios.ReservaRepository,
 	clienteRepo *repositorios.ClienteRepository,
-	tourProgramadoRepo *repositorios.TourProgramadoRepository,
+	instanciaTourRepo *repositorios.InstanciaTourRepository,
 	canalVentaRepo *repositorios.CanalVentaRepository,
 	tipoPasajeRepo *repositorios.TipoPasajeRepository,
+	paquetePasajesRepo *repositorios.PaquetePasajesRepository,
 	usuarioRepo *repositorios.UsuarioRepository,
-	sedeRepo *repositorios.SedeRepository, // Añadido repositorio de sedes
+	sedeRepo *repositorios.SedeRepository,
 ) *ReservaService {
 	return &ReservaService{
 		db:                 db,
 		reservaRepo:        reservaRepo,
 		clienteRepo:        clienteRepo,
-		tourProgramadoRepo: tourProgramadoRepo,
+		instanciaTourRepo:  instanciaTourRepo,
 		canalVentaRepo:     canalVentaRepo,
 		tipoPasajeRepo:     tipoPasajeRepo,
+		paquetePasajesRepo: paquetePasajesRepo,
 		usuarioRepo:        usuarioRepo,
-		sedeRepo:           sedeRepo, // Asignado nuevo repositorio
+		sedeRepo:           sedeRepo,
 	}
 }
 
@@ -57,15 +59,15 @@ func (s *ReservaService) Create(reserva *entidades.NuevaReservaRequest) (int, er
 		return 0, errors.New("el cliente especificado no existe")
 	}
 
-	// Verificar que el tour programado existe
-	tourProgramado, err := s.tourProgramadoRepo.GetByID(reserva.IDTourProgramado)
+	// Verificar que la instancia de tour existe
+	instanciaTour, err := s.instanciaTourRepo.GetByID(reserva.IDInstancia)
 	if err != nil {
-		return 0, errors.New("el tour programado especificado no existe")
+		return 0, errors.New("la instancia de tour especificada no existe")
 	}
 
-	// Verificar que el tour programado está en estado PROGRAMADO
-	if tourProgramado.Estado != "PROGRAMADO" {
-		return 0, errors.New("no se puede reservar en un tour que no está programado")
+	// Verificar que la instancia de tour está en estado PROGRAMADO
+	if instanciaTour.Estado != "PROGRAMADO" {
+		return 0, errors.New("no se puede reservar en una instancia que no está programada")
 	}
 
 	// Verificar que el canal de venta existe
@@ -92,46 +94,35 @@ func (s *ReservaService) Create(reserva *entidades.NuevaReservaRequest) (int, er
 	}
 
 	// Verificar que los tipos de pasaje existen
-	totalPasajeros := 0
+	totalPasajerosIndividuales := 0
 	for _, pasaje := range reserva.CantidadPasajes {
 		_, err := s.tipoPasajeRepo.GetByID(pasaje.IDTipoPasaje)
 		if err != nil {
 			return 0, errors.New("uno de los tipos de pasaje especificados no existe")
 		}
-		totalPasajeros += pasaje.Cantidad
+		totalPasajerosIndividuales += pasaje.Cantidad
 	}
 
+	// Verificar que los paquetes existen y calcular total de pasajeros
+	totalPasajerosPaquetes := 0
+	for _, paquete := range reserva.Paquetes {
+		paqueteInfo, err := s.paquetePasajesRepo.GetByID(paquete.IDPaquete)
+		if err != nil {
+			return 0, errors.New("uno de los paquetes especificados no existe")
+		}
+		totalPasajerosPaquetes += paqueteInfo.CantidadTotal * paquete.Cantidad
+	}
+
+	// Calcular total de pasajeros
+	totalPasajeros := totalPasajerosIndividuales + totalPasajerosPaquetes
+
 	// Verificar disponibilidad de cupo
-	if totalPasajeros > tourProgramado.CupoDisponible {
+	if totalPasajeros > instanciaTour.CupoDisponible {
 		return 0, errors.New("no hay suficiente cupo disponible para la cantidad de pasajeros solicitada")
 	}
 
-	// Iniciar transacción
-	tx, err := s.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
 	// Crear reserva
-	id, err := s.reservaRepo.Create(tx, reserva)
-	if err != nil {
-		return 0, err
-	}
-
-	// Actualizar cupo disponible del tour programado
-	nuevoCupo := tourProgramado.CupoDisponible - totalPasajeros
-	err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupo)
-	if err != nil {
-		return 0, err
-	}
-
-	// Commit de la transacción
-	err = tx.Commit()
+	id, err := s.reservaRepo.Create(reserva)
 	if err != nil {
 		return 0, err
 	}
@@ -150,7 +141,7 @@ func (s *ReservaService) GetByID(id int) (*entidades.Reserva, error) {
 // Maneja la lógica de cambios en el cupo de pasajeros si es necesario
 func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequest) error {
 	// Verificar que la reserva existe
-	existingReserva, err := s.reservaRepo.GetByID(id)
+	_, err := s.reservaRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -161,10 +152,15 @@ func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequ
 		return errors.New("el cliente especificado no existe")
 	}
 
-	// Verificar que el tour programado existe
-	tourProgramado, err := s.tourProgramadoRepo.GetByID(reserva.IDTourProgramado)
+	// Verificar que la instancia de tour existe
+	instanciaTour, err := s.instanciaTourRepo.GetByID(reserva.IDInstancia)
 	if err != nil {
-		return errors.New("el tour programado especificado no existe")
+		return errors.New("la instancia de tour especificada no existe")
+	}
+
+	// Verificar que la instancia de tour está en estado PROGRAMADO
+	if instanciaTour.Estado != "PROGRAMADO" {
+		return errors.New("no se puede reservar en una instancia que no está programada")
 	}
 
 	// Verificar que el canal de venta existe
@@ -191,180 +187,58 @@ func (s *ReservaService) Update(id int, reserva *entidades.ActualizarReservaRequ
 	}
 
 	// Verificar que los tipos de pasaje existen
-	totalPasajerosNuevo := 0
 	for _, pasaje := range reserva.CantidadPasajes {
 		_, err := s.tipoPasajeRepo.GetByID(pasaje.IDTipoPasaje)
 		if err != nil {
 			return errors.New("uno de los tipos de pasaje especificados no existe")
 		}
-		totalPasajerosNuevo += pasaje.Cantidad
 	}
 
-	// Obtener la cantidad actual de pasajeros en la reserva
-	totalPasajerosActual, err := s.reservaRepo.GetCantidadPasajerosByReserva(id)
-	if err != nil {
-		return err
-	}
-
-	// Calcular diferencia de pasajeros
-	diferenciaPasajeros := totalPasajerosNuevo - totalPasajerosActual
-
-	// Si es el mismo tour programado, verificar disponibilidad de cupo considerando la diferencia
-	if reserva.IDTourProgramado == existingReserva.IDTourProgramado {
-		if diferenciaPasajeros > 0 && diferenciaPasajeros > tourProgramado.CupoDisponible {
-			return errors.New("no hay suficiente cupo disponible para aumentar la cantidad de pasajeros")
-		}
-	} else {
-		// Si es otro tour programado, verificar disponibilidad total
-		if totalPasajerosNuevo > tourProgramado.CupoDisponible {
-			return errors.New("no hay suficiente cupo disponible en el nuevo tour programado")
-		}
-	}
-
-	// Iniciar transacción
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
+	// Verificar que los paquetes existen
+	for _, paquete := range reserva.Paquetes {
+		_, err := s.paquetePasajesRepo.GetByID(paquete.IDPaquete)
 		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Actualizar reserva
-	err = s.reservaRepo.Update(tx, id, reserva)
-	if err != nil {
-		return err
-	}
-
-	// Si cambió el tour programado, actualizar cupos de ambos tours
-	if reserva.IDTourProgramado != existingReserva.IDTourProgramado {
-		// Liberar cupo en el tour anterior
-		tourAnterior, err := s.tourProgramadoRepo.GetByID(existingReserva.IDTourProgramado)
-		if err != nil {
-			return err
-		}
-		nuevoCupoAnterior := tourAnterior.CupoDisponible + totalPasajerosActual
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(existingReserva.IDTourProgramado, nuevoCupoAnterior)
-		if err != nil {
-			return err
-		}
-
-		// Reservar cupo en el nuevo tour
-		nuevoCupoNuevo := tourProgramado.CupoDisponible - totalPasajerosNuevo
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupoNuevo)
-		if err != nil {
-			return err
-		}
-	} else if diferenciaPasajeros != 0 {
-		// Si es el mismo tour pero cambió la cantidad de pasajeros, actualizar cupo
-		nuevoCupo := tourProgramado.CupoDisponible - diferenciaPasajeros
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupo)
-		if err != nil {
-			return err
+			return errors.New("uno de los paquetes especificados no existe")
 		}
 	}
 
-	// Commit de la transacción
-	return tx.Commit()
+	// El repositorio maneja internamente la lógica de verificar cupos y actualizar instancias
+	// Simplemente llamamos al método Update con todos los datos validados
+	return s.reservaRepo.Update(id, reserva)
 }
 
 // CambiarEstado cambia el estado de una reserva
 // Actualiza el estado y maneja la lógica de negocio relacionada con el cambio
-// Por ejemplo, libera cupos si se cancela una reserva
+// El repositorio maneja internamente el cupo disponible
 func (s *ReservaService) CambiarEstado(id int, estado string) error {
 	// Verificar que la reserva existe
-	reserva, err := s.reservaRepo.GetByID(id)
+	_, err := s.reservaRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
 	// Verificar que el estado es válido
-	if estado != "RESERVADO" && estado != "CANCELADA" {
+	if estado != "RESERVADO" && estado != "CANCELADA" && estado != "CONFIRMADA" {
 		return errors.New("estado de reserva inválido")
 	}
 
-	// Si se está cancelando una reserva, liberar el cupo
-	if estado == "CANCELADA" && reserva.Estado != "CANCELADA" {
-		// Obtener la cantidad de pasajeros en la reserva
-		totalPasajeros, err := s.reservaRepo.GetCantidadPasajerosByReserva(id)
-		if err != nil {
-			return err
-		}
-
-		// Liberar cupo en el tour programado
-		tourProgramado, err := s.tourProgramadoRepo.GetByID(reserva.IDTourProgramado)
-		if err != nil {
-			return err
-		}
-		nuevoCupo := tourProgramado.CupoDisponible + totalPasajeros
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupo)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Si se está reactivando una reserva cancelada, verificar disponibilidad y reservar cupo
-	if estado == "RESERVADO" && reserva.Estado == "CANCELADA" {
-		// Obtener la cantidad de pasajeros en la reserva
-		totalPasajeros, err := s.reservaRepo.GetCantidadPasajerosByReserva(id)
-		if err != nil {
-			return err
-		}
-
-		// Verificar disponibilidad de cupo
-		tourProgramado, err := s.tourProgramadoRepo.GetByID(reserva.IDTourProgramado)
-		if err != nil {
-			return err
-		}
-		if totalPasajeros > tourProgramado.CupoDisponible {
-			return errors.New("no hay suficiente cupo disponible para reactivar la reserva")
-		}
-
-		// Reservar cupo
-		nuevoCupo := tourProgramado.CupoDisponible - totalPasajeros
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupo)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Actualizar estado de la reserva
+	// El repositorio maneja la lógica de liberar o reservar cupos
 	return s.reservaRepo.UpdateEstado(id, estado)
 }
 
 // Delete realiza una eliminación lógica de una reserva
 // Verifica restricciones como pagos o comprobantes asociados
-// Actualiza el cupo disponible en el tour si es necesario
+// El repositorio maneja internamente el cupo disponible
 func (s *ReservaService) Delete(id int) error {
 	// Verificar que la reserva existe
-	reserva, err := s.reservaRepo.GetByID(id)
+	_, err := s.reservaRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	// Si la reserva no está cancelada, liberar el cupo
-	if reserva.Estado != "CANCELADA" {
-		// Obtener la cantidad de pasajeros en la reserva
-		totalPasajeros, err := s.reservaRepo.GetCantidadPasajerosByReserva(id)
-		if err != nil {
-			return err
-		}
-
-		// Liberar cupo en el tour programado
-		tourProgramado, err := s.tourProgramadoRepo.GetByID(reserva.IDTourProgramado)
-		if err != nil {
-			return err
-		}
-		nuevoCupo := tourProgramado.CupoDisponible + totalPasajeros
-		err = s.tourProgramadoRepo.UpdateCupoDisponible(reserva.IDTourProgramado, nuevoCupo)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Eliminar reserva (lógicamente)
+	// El repositorio maneja la lógica de liberar cupos
 	return s.reservaRepo.Delete(id)
 }
 
@@ -386,16 +260,16 @@ func (s *ReservaService) ListByCliente(idCliente int) ([]*entidades.Reserva, err
 	return s.reservaRepo.ListByCliente(idCliente)
 }
 
-// ListByTourProgramado lista todas las reservas para un tour programado específico
-// Verifica primero que el tour programado exista
-func (s *ReservaService) ListByTourProgramado(idTourProgramado int) ([]*entidades.Reserva, error) {
-	// Verificar que el tour programado existe
-	_, err := s.tourProgramadoRepo.GetByID(idTourProgramado)
+// ListByInstancia lista todas las reservas para una instancia específica
+// Verifica primero que la instancia exista
+func (s *ReservaService) ListByInstancia(idInstancia int) ([]*entidades.Reserva, error) {
+	// Verificar que la instancia existe
+	_, err := s.instanciaTourRepo.GetByID(idInstancia)
 	if err != nil {
-		return nil, errors.New("el tour programado especificado no existe")
+		return nil, errors.New("la instancia de tour especificada no existe")
 	}
 
-	return s.reservaRepo.ListByTourProgramado(idTourProgramado)
+	return s.reservaRepo.ListByInstancia(idInstancia)
 }
 
 // ListByFecha lista todas las reservas para una fecha específica
@@ -404,19 +278,17 @@ func (s *ReservaService) ListByFecha(fecha time.Time) ([]*entidades.Reserva, err
 	return s.reservaRepo.ListByFecha(fecha)
 }
 
-// ListByEstado lista todas las reservas por estado específico (RESERVADO, CANCELADA)
+// ListByEstado lista todas las reservas por estado específico (RESERVADO, CANCELADA, CONFIRMADA)
 // Verifica que el estado sea válido antes de ejecutar la consulta
 func (s *ReservaService) ListByEstado(estado string) ([]*entidades.Reserva, error) {
 	// Verificar que el estado es válido
-	if estado != "RESERVADO" && estado != "CANCELADA" {
+	if estado != "RESERVADO" && estado != "CANCELADA" && estado != "CONFIRMADA" {
 		return nil, errors.New("estado de reserva inválido")
 	}
 
 	return s.reservaRepo.ListByEstado(estado)
 }
 
-// ListBySede lista todas las reservas de una sede específica
-// Verifica primero que la sede exista
 // ListBySede lista todas las reservas de una sede específica
 // Verifica primero que la sede exista
 func (s *ReservaService) ListBySede(idSede int) ([]*entidades.Reserva, error) {
@@ -443,9 +315,184 @@ func (s *ReservaService) ListBySede(idSede int) ([]*entidades.Reserva, error) {
 	return reservas, nil
 }
 
-// Agregar un nuevo método para listar todas las reservas (para ADMIN)
+// ListAllReservas lista todas las reservas (para ADMIN)
 func (s *ReservaService) ListAllReservas() ([]*entidades.Reserva, error) {
 	// Pasar nil para obtener todas las reservas sin filtrar por sede
 	return s.reservaRepo.ListBySede(nil)
 }
-*/
+
+// ReservarConMercadoPago crea una reserva y genera una preferencia de pago para Mercado Pago
+func (s *ReservaService) ReservarConMercadoPago(
+	request *entidades.ReservaMercadoPagoRequest,
+	mercadoPagoService *MercadoPagoService,
+	frontendURL string,
+) (*entidades.ReservaMercadoPagoResponse, error) {
+	// Verificar que el cliente existe
+	cliente, err := s.clienteRepo.GetByID(request.IDCliente)
+	if err != nil {
+		return nil, errors.New("el cliente especificado no existe")
+	}
+
+	// Verificar que la instancia existe y está programada
+	instancia, err := s.instanciaTourRepo.GetByID(request.IDInstancia)
+	if err != nil {
+		return nil, errors.New("la instancia de tour especificada no existe")
+	}
+
+	if instancia.Estado != "PROGRAMADO" {
+		return nil, errors.New("no se puede reservar en una instancia que no está programada")
+	}
+
+	// Verificar que los tipos de pasaje existen
+	totalPasajerosIndividuales := 0
+	for _, pasaje := range request.CantidadPasajes {
+		_, err := s.tipoPasajeRepo.GetByID(pasaje.IDTipoPasaje)
+		if err != nil {
+			return nil, errors.New("uno de los tipos de pasaje especificados no existe")
+		}
+		totalPasajerosIndividuales += pasaje.Cantidad
+	}
+
+	// Verificar que los paquetes existen y calcular total de pasajeros
+	totalPasajerosPaquetes := 0
+	for _, paquete := range request.Paquetes {
+		paqueteInfo, err := s.paquetePasajesRepo.GetByID(paquete.IDPaquete)
+		if err != nil {
+			return nil, errors.New("uno de los paquetes especificados no existe")
+		}
+		totalPasajerosPaquetes += paqueteInfo.CantidadTotal * paquete.Cantidad
+	}
+
+	// Calcular total de pasajeros
+	totalPasajeros := totalPasajerosIndividuales + totalPasajerosPaquetes
+
+	// Verificar disponibilidad de cupo
+	if totalPasajeros > instancia.CupoDisponible {
+		return nil, errors.New("no hay suficiente cupo disponible para la cantidad de pasajeros solicitada")
+	}
+
+	// Crear reserva con valores predeterminados para canal y sede web
+	nuevaReserva := &entidades.NuevaReservaRequest{
+		IDCliente:       request.IDCliente,
+		IDInstancia:     request.IDInstancia,
+		IDCanal:         1, // Canal web/online (debe existir en la base de datos)
+		IDSede:          1, // Sede principal (debe existir en la base de datos)
+		TotalPagar:      request.TotalPagar,
+		CantidadPasajes: request.CantidadPasajes,
+		Paquetes:        request.Paquetes,
+		Notas:           "Reserva generada a través de Mercado Pago",
+	}
+
+	// Crear la reserva y obtener su ID
+	idReserva, nombreTour, err := s.reservaRepo.ReservarInstanciaMercadoPago(nuevaReserva)
+	if err != nil {
+		return nil, err
+	}
+
+	// Actualizar datos del cliente si es necesario
+	if request.Telefono != "" && cliente.NumeroCelular == "" {
+		// Crear una solicitud de actualización compatible con el repositorio de clientes
+		actualizarClienteRequest := &entidades.ActualizarClienteRequest{
+			Nombres:         cliente.Nombres,
+			Apellidos:       cliente.Apellidos,
+			Correo:          cliente.Correo,
+			NumeroCelular:   request.Telefono,
+			NumeroDocumento: cliente.NumeroDocumento,
+		}
+
+		err = s.clienteRepo.Update(cliente.ID, actualizarClienteRequest)
+		if err != nil {
+			// No fallar la reserva por esto, solo registrar el error
+			fmt.Printf("Error al actualizar teléfono del cliente: %v\n", err)
+		}
+	}
+
+	if request.Documento != "" && cliente.NumeroDocumento == "" {
+		// Crear una solicitud de actualización compatible con el repositorio de clientes
+		actualizarClienteRequest := &entidades.ActualizarClienteRequest{
+			Nombres:         cliente.Nombres,
+			Apellidos:       cliente.Apellidos,
+			Correo:          cliente.Correo,
+			NumeroCelular:   cliente.NumeroCelular,
+			NumeroDocumento: request.Documento,
+		}
+
+		err = s.clienteRepo.Update(cliente.ID, actualizarClienteRequest)
+		if err != nil {
+			// No fallar la reserva por esto, solo registrar el error
+			fmt.Printf("Error al actualizar documento del cliente: %v\n", err)
+		}
+	}
+
+	// Crear preferencia de pago en Mercado Pago
+	preferencia, err := mercadoPagoService.CreatePreference(
+		nombreTour,
+		request.TotalPagar,
+		idReserva,
+		cliente,
+		frontendURL,
+	)
+	if err != nil {
+		// Si falla la creación de la preferencia, cancelamos la reserva
+		_ = s.reservaRepo.UpdateEstado(idReserva, "CANCELADA")
+		return nil, fmt.Errorf("error al crear preferencia de pago: %v", err)
+	}
+
+	// Crear respuesta con los datos de la preferencia
+	respuesta := &entidades.ReservaMercadoPagoResponse{
+		IDReserva:        idReserva,
+		NombreTour:       nombreTour,
+		PreferenceID:     preferencia.ID,
+		InitPoint:        preferencia.InitPoint,
+		SandboxInitPoint: preferencia.SandboxInitPoint,
+	}
+
+	return respuesta, nil
+}
+
+// ConfirmarPagoReserva confirma una reserva después de recibir el pago
+func (s *ReservaService) ConfirmarPagoReserva(idReserva int, idTransaccion string, monto float64) error {
+	// Verificar que la reserva existe
+	reserva, err := s.reservaRepo.GetByID(idReserva)
+	if err != nil {
+		return errors.New("la reserva especificada no existe")
+	}
+
+	// Verificar que la reserva está en estado RESERVADO
+	if reserva.Estado != "RESERVADO" {
+		return errors.New("la reserva no está en estado RESERVADO")
+	}
+
+	// Actualizar estado de la reserva a CONFIRMADA
+	err = s.reservaRepo.UpdateEstado(idReserva, "CONFIRMADA")
+	if err != nil {
+		return fmt.Errorf("error al confirmar la reserva: %v", err)
+	}
+
+	// Aquí se podría registrar el pago en la tabla pagos
+	// Esto dependerá de la estructura de tu sistema
+
+	return nil
+}
+
+// GetTotalPasajerosByInstancia obtiene el total de pasajeros reservados para una instancia
+func (s *ReservaService) GetTotalPasajerosByInstancia(idInstancia int) (int, error) {
+	// Verificar que la instancia existe
+	_, err := s.instanciaTourRepo.GetByID(idInstancia)
+	if err != nil {
+		return 0, errors.New("la instancia de tour especificada no existe")
+	}
+
+	return s.reservaRepo.GetTotalPasajerosByInstancia(idInstancia)
+}
+
+// VerificarDisponibilidadInstancia verifica si hay suficiente cupo en una instancia
+func (s *ReservaService) VerificarDisponibilidadInstancia(idInstancia int, cantidadPasajeros int) (bool, error) {
+	// Verificar que la instancia existe
+	_, err := s.instanciaTourRepo.GetByID(idInstancia)
+	if err != nil {
+		return false, errors.New("la instancia de tour especificada no existe")
+	}
+
+	return s.reservaRepo.VerificarDisponibilidadInstancia(idInstancia, cantidadPasajeros)
+}

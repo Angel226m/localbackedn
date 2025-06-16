@@ -35,7 +35,7 @@ func SetupRoutes(
 	metodoPagoController *controladores.MetodoPagoController,
 	canalVentaController *controladores.CanalVentaController,
 	clienteController *controladores.ClienteController,
-	/*reservaController *controladores.ReservaController,*/
+	reservaController *controladores.ReservaController, // Agregar controlador de reservas
 	pagoController *controladores.PagoController,
 	comprobantePagoController *controladores.ComprobantePagoController,
 	sedeController *controladores.SedeController,
@@ -132,6 +132,17 @@ func SetupRoutes(
 
 		// Idiomas (acceso público para ver opciones disponibles)
 		public.GET("/idiomas", idiomaController.List)
+
+		//reservas mercado pago
+
+		public.POST("/mercadopago/reservar", reservaController.ReservarConMercadoPago)
+
+		// Webhook para recibir notificaciones de Mercado Pago
+		public.POST("/webhook/mercadopago", reservaController.WebhookMercadoPago)
+
+		// Verificar disponibilidad de instancia
+		public.GET("/instancias-tour/:idInstancia/verificar-disponibilidad", reservaController.VerificarDisponibilidadInstancia)
+
 	}
 
 	// Rutas protegidas (requieren autenticación)
@@ -356,6 +367,21 @@ func SetupRoutes(
 			admin.POST("/instancias-tour/filtrar", instanciaTourController.ListByFiltros)
 			admin.POST("/instancias-tour/generar/:id_tour_programado", instanciaTourController.GenerarInstanciasDeTourProgramado)
 
+			admin.POST("/reservas", reservaController.Create)
+			admin.GET("/reservas", reservaController.List)
+			admin.GET("/reservas/:id", reservaController.GetByID)
+			admin.PUT("/reservas/:id", reservaController.Update)
+			admin.DELETE("/reservas/:id", reservaController.Delete)
+			admin.POST("/reservas/:id/estado", reservaController.CambiarEstado)
+			admin.GET("/reservas/cliente/:idCliente", reservaController.ListByCliente)
+			admin.GET("/reservas/instancia/:idInstancia", reservaController.ListByInstancia)
+			admin.GET("/reservas/fecha/:fecha", reservaController.ListByFecha)
+			admin.GET("/reservas/estado/:estado", reservaController.ListByEstado)
+			admin.GET("/reservas/sede/:idSede", reservaController.ListBySede)
+
+			// Confirmación manual de pagos con Mercado Pago
+			admin.POST("/reservas/confirmar-pago", reservaController.ConfirmarPagoReserva)
+
 		}
 
 		// Vendedores
@@ -458,6 +484,19 @@ func SetupRoutes(
 			vendedor.GET("/comprobantes/:id", comprobantePagoController.GetByID)
 			vendedor.GET("/comprobantes/buscar", comprobantePagoController.GetByTipoAndNumero)
 			vendedor.GET("/comprobantes/reserva/:idReserva", comprobantePagoController.ListByReserva)
+			//reservas mercado pago
+			vendedor.POST("/reservas", reservaController.Create)
+			vendedor.GET("/reservas", reservaController.List)
+			vendedor.GET("/reservas/:id", reservaController.GetByID)
+			vendedor.PUT("/reservas/:id", reservaController.Update)
+			vendedor.POST("/reservas/:id/estado", reservaController.CambiarEstado)
+			vendedor.GET("/reservas/cliente/:idCliente", reservaController.ListByCliente)
+			vendedor.GET("/reservas/instancia/:idInstancia", reservaController.ListByInstancia)
+			vendedor.GET("/reservas/fecha/:fecha", reservaController.ListByFecha)
+			vendedor.GET("/reservas/estado/:estado", reservaController.ListByEstado)
+
+			// Confirmación manual de pagos con Mercado Pago
+			vendedor.POST("/reservas/confirmar-pago", reservaController.ConfirmarPagoReserva)
 		}
 
 		// Choferes
@@ -509,6 +548,7 @@ func SetupRoutes(
 
 				instanciaTourController.ListByFiltros(ctx)
 			})
+
 		}
 
 		// Clientes
@@ -585,6 +625,133 @@ func SetupRoutes(
 				clienteID := ctx.GetInt("userID")
 				ctx.Request.URL.Path = "/api/v1/admin/comprobantes/cliente/" + strconv.Itoa(clienteID)
 				router.HandleContext(ctx)
+			})
+
+			// Ver mis reservas
+			cliente.GET("/mis-reservas", reservaController.ListMyReservas)
+
+			// Ver detalle de una reserva específica
+			cliente.GET("/mis-reservas/:id", func(ctx *gin.Context) {
+				reservaID := ctx.Param("id")
+				clienteID := ctx.GetInt("userID")
+
+				// Obtener la reserva
+				id, _ := strconv.Atoi(reservaID)
+				reserva, err := reservaController.reservaService.GetByID(id)
+				if err != nil {
+					ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Reserva no encontrada", err))
+					return
+				}
+
+				// Verificar que la reserva pertenece al cliente
+				if reserva.IDCliente != clienteID {
+					ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene acceso a esta reserva", nil))
+					return
+				}
+
+				// Mostrar la reserva
+				ctx.JSON(http.StatusOK, utils.SuccessResponse("Reserva obtenida exitosamente", reserva))
+			})
+
+			// Realizar reserva (desde área de cliente)
+			cliente.POST("/reservas", func(ctx *gin.Context) {
+				// Asegurar que la reserva se crea para el cliente autenticado
+				clienteID := ctx.GetInt("userID")
+
+				var reservaReq entidades.NuevaReservaRequest
+				if err := ctx.ShouldBindJSON(&reservaReq); err != nil {
+					ctx.JSON(http.StatusBadRequest, utils.ErrorResponse("Datos inválidos", err))
+					return
+				}
+
+				// Forzar el ID del cliente al usuario autenticado
+				reservaReq.IDCliente = clienteID
+
+				// Llamar al controlador para crear la reserva
+				ctx.Set("reservaRequest", reservaReq)
+				reservaController.Create(ctx)
+			})
+
+			// Cancelar una reserva
+			cliente.POST("/mis-reservas/:id/cancelar", func(ctx *gin.Context) {
+				reservaID := ctx.Param("id")
+				clienteID := ctx.GetInt("userID")
+
+				// Obtener la reserva
+				id, _ := strconv.Atoi(reservaID)
+				reserva, err := reservaController.reservaService.GetByID(id)
+				if err != nil {
+					ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Reserva no encontrada", err))
+					return
+				}
+
+				// Verificar que la reserva pertenece al cliente
+				if reserva.IDCliente != clienteID {
+					ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene acceso a esta reserva", nil))
+					return
+				}
+
+				// Crear el request para cambiar estado
+				estadoReq := entidades.CambiarEstadoReservaRequest{
+					Estado: "CANCELADA",
+				}
+
+				// Añadir al contexto y llamar al controlador
+				ctx.Request.Method = "POST"
+				ctx.Params = append(ctx.Params, gin.Param{Key: "id", Value: reservaID})
+				ctx.Set("json", estadoReq)
+				if err := ctx.ShouldBindJSON(&estadoReq); err != nil {
+					// Si hay error de binding, cargarlo manualmente en el contexto
+					ctx.Set("estadoRequest", estadoReq)
+				}
+
+				reservaController.CambiarEstado(ctx)
+			})
+
+			// Pagar una reserva con Mercado Pago
+			cliente.POST("/mis-reservas/:id/pagar", func(ctx *gin.Context) {
+				reservaID := ctx.Param("id")
+				clienteID := ctx.GetInt("userID")
+
+				// Obtener la reserva
+				id, _ := strconv.Atoi(reservaID)
+				reserva, err := reservaController.reservaService.GetByID(id)
+				if err != nil {
+					ctx.JSON(http.StatusNotFound, utils.ErrorResponse("Reserva no encontrada", err))
+					return
+				}
+
+				// Verificar que la reserva pertenece al cliente
+				if reserva.IDCliente != clienteID {
+					ctx.JSON(http.StatusForbidden, utils.ErrorResponse("No tiene acceso a esta reserva", nil))
+					return
+				}
+
+				// Obtener datos del cliente
+				cliente, err := clienteController.clienteService.GetByID(clienteID)
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al obtener datos del cliente", err))
+					return
+				}
+
+				// Crear solicitud para generar preferencia de Mercado Pago
+				frontendURL := ctx.GetHeader("Origin")
+				if frontendURL == "" {
+					frontendURL = "https://tours-peru.com" // URL predeterminada
+				}
+
+				// Crear la preferencia de pago para esta reserva
+				// Aquí tendríamos que adaptar ya que la reserva ya existe, a diferencia de ReservarConMercadoPago
+				// Esta es una implementación simplificada
+				response, err := reservaController.mercadoPagoService.GeneratePreferenceForExistingReserva(
+					id, reserva.TotalPagar, cliente, frontendURL)
+
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse("Error al generar preferencia de pago", err))
+					return
+				}
+
+				ctx.JSON(http.StatusOK, utils.SuccessResponse("Preferencia de pago generada exitosamente", response))
 			})
 		}
 	}

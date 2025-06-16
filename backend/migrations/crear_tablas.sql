@@ -180,6 +180,10 @@ CREATE TABLE tour_programado (
     cupo_disponible INT NOT NULL,
     estado VARCHAR(20) DEFAULT 'PROGRAMADO',
     eliminado BOOLEAN DEFAULT FALSE,
+     es_excepcion BOOLEAN DEFAULT FALSE, -- Nuevo campo
+    notas_excepcion TEXT,               -- Nuevo campo
+    
+
     -- Referencias a otras tablas
     FOREIGN KEY (id_tipo_tour) REFERENCES tipo_tour(id_tipo_tour) ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (id_embarcacion) REFERENCES embarcacion(id_embarcacion) ON UPDATE CASCADE ON DELETE RESTRICT,
