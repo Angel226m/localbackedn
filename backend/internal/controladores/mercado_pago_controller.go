@@ -1,6 +1,5 @@
 package controladores
 
-/*
 import (
 	"encoding/json"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"sistema-toursseft/internal/utils"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 // MercadoPagoController maneja las operaciones relacionadas con Mercado Pago
@@ -145,7 +146,8 @@ func (c *MercadoPagoController) ProcessWebhook(w http.ResponseWriter, r *http.Re
 	}
 
 	// Obtener la reserva
-	reserva, err := c.reservaService.GetByID(idReserva)
+	// Verificar que la reserva existe
+	_, err = c.reservaService.GetByID(idReserva)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusNotFound, "Reserva no encontrada", err)
 		return
@@ -202,4 +204,10 @@ func (c *MercadoPagoController) GetPaymentPublicKey(w http.ResponseWriter, r *ht
 		"public_key": c.mercadoPagoService.PublicKey,
 	})
 }
-*/
+
+// GetPublicKey devuelve la clave pública de Mercado Pago
+func (c *MercadoPagoController) GetPublicKey(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{
+		"public_key": c.mercadoPagoService.PublicKey,
+	})
+}

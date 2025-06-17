@@ -252,3 +252,33 @@ func (s *PagoService) ListBySede(idSede int) ([]*entidades.Pago, error) {
 	// Listar pagos por sede
 	return s.pagoRepo.ListBySede(idSede)
 }
+
+// UpdateEstado actualiza el estado de un pago
+func (s *PagoService) UpdateEstado(id int, estado string) error {
+	// Verificar que el pago existe
+	pago, err := s.pagoRepo.GetByID(id)
+	if err != nil {
+		return errors.New("pago no encontrado")
+	}
+
+	// Validar que el estado sea uno de los permitidos
+	estadosPermitidos := map[string]bool{
+		"PENDIENTE": true,
+		"PROCESADO": true,
+		"RECHAZADO": true,
+		"DEVUELTO":  true,
+		"CANCELADO": true,
+	}
+
+	if !estadosPermitidos[estado] {
+		return errors.New("estado de pago no válido")
+	}
+
+	// Si ya tiene ese estado, no hacer nada
+	if pago.Estado == estado {
+		return nil
+	}
+
+	// Actualizar estado en la base de datos
+	return s.pagoRepo.UpdateEstado(id, estado)
+}

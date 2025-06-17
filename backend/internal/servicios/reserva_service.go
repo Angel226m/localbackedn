@@ -496,3 +496,29 @@ func (s *ReservaService) VerificarDisponibilidadInstancia(idInstancia int, canti
 
 	return s.reservaRepo.VerificarDisponibilidadInstancia(idInstancia, cantidadPasajeros)
 }
+
+// UpdateEs tadoReservaActualizaEstado actualiza el estado de una reserva
+// UpdateEstado actualiza el estado de una reserva
+func (s *ReservaService) UpdateEstado(id int, estado string) error {
+	// Verificar que existe la reserva sin almacenar el resultado
+	_, err := s.reservaRepo.GetByID(id)
+	if err != nil {
+		return errors.New("la reserva especificada no existe")
+	}
+
+	// Validar que el estado sea uno de los permitidos
+	estadosPermitidos := map[string]bool{
+		"RESERVADO":  true,
+		"CONFIRMADA": true,
+		"CANCELADA":  true,
+		"COMPLETADA": true,
+		"ANULADA":    true,
+	}
+
+	if !estadosPermitidos[estado] {
+		return errors.New("estado de reserva no válido")
+	}
+
+	// Actualizar estado en la base de datos
+	return s.reservaRepo.UpdateEstado(id, estado)
+}
